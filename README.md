@@ -2,31 +2,6 @@
 
 本工程用于评测不同 AI 模型在后端真实代码场景中的能力，覆盖架构生成、业务实现、组件设计、缺陷修复四个模块。
 
-## 你还需要完成的工作（当前必须）
-
-> 现在工程骨架已完成，以下内容需要你补充真实评测物料后才能正式开跑。
-
-### M1 架构生成
-- 补全 `modules/m1_arch/input/api.proto` 的真实协议定义（service、message、字段约束、可选 PGV 约束）。
-- 在 `modules/m1_arch/tests/` 增加黑盒测试（编译、校验调用、分层与错误包装规范）。
-
-### M2 业务实现
-- 补全 `modules/m2_biz/input/biz_spec.md` 的真实业务流程与边界条件。
-- 补全 `modules/m2_biz/input/interfaces.go` 的真实依赖接口（DB、Kafka、RPC）。
-- 在 `modules/m2_biz/tests/` 增加事务、容错、Context 透传测试。
-
-### M3 组件设计
-- 补全 `modules/m3_component/input/rate_limit_spec.md`（吞吐目标、窗口定义、压测口径）。
-- 在 `modules/m3_component/tests/` 增加并发压测、`-race` 校验、Lua 原子性验证。
-
-### M4 缺陷修复
-- 补全 `modules/m4_bugfix/input/bug_report.md` 与 `legacy_code.go` 的真实缺陷样本。
-- 在 `modules/m4_bugfix/tests/` 增加可复现原 Bug 的边界用例，覆盖 TDD 闭环。
-
-### 评测执行与治理
-- 确认每个模块的 `JUDGE_AGENT.md` 评分细则与你预期一致（可继续微调权重）。
-- 评测时记录每轮模型的 Token 消耗与执行时长（当前需手工记录，可后续自动化）。
-
 ## 目录说明
 
 - `modules/`: 核心测试床（每个模块包含专属规则、输入物料、测试床、裁判标准）
