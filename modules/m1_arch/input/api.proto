@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package m1.arch.v1;
+
+option go_package = "ai_eval/modules/m1_arch/input;archv1";
+
+// TODO: 待补充真实评测题目协议定义。
+service PlaceholderService {
+  rpc Ping(PingRequest) returns (PingResponse) {}
+}
+
+message PingRequest {
+  string trace_id = 1;
+}
+
+message PingResponse {
+  string message = 1;
+}
