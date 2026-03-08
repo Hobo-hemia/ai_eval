@@ -1,60 +1,81 @@
 #!/bin/bash
 
-# 设置遇到错误时退出
-set -e
+set -euo pipefail
 
 echo "=========================================="
-echo "🚀 AI Eval - 5模型 x 4模块 全量深水区评测"
+echo "🚀 AI Eval - 批量评测（模型并行）"
 echo "=========================================="
 
-# 核心配置
-MODELS="gpt-5.3-codex,opus-4.5,gemini-3-pro,kimi-k2.5,composer-1"
-MODULES="m1,m2,m3,m4"
-JUDGE="opus-4.6"
+# 核心配置（可通过环境变量覆盖）
+MODELS="${MODELS:-gpt-5.3-codex,opus-4.5,gemini-3-pro,kimi-k2.5,composer-1}"
+MODULES="${MODULES:-m1,m2,m3,m4}"
+JUDGE="${JUDGE:-opus-4.6}"
+PARALLEL_JOBS="${PARALLEL_JOBS:-3}"
 
-# 1. 编译最新的评测执行器
-echo "▶️ [1/4] 正在编译评测工具 (bin_ai_eval)..."
+echo "▶️ [1/5] 正在编译评测工具 (bin_ai_eval)..."
 go build -o bin_ai_eval .
 
-# 2. 清空历史数据
-echo "▶️ [2/4] 正在清空历史评测工作区 (eval_records)..."
+echo "▶️ [2/5] 正在清空历史评测工作区 (eval_records)..."
 ./bin_ai_eval clear || true
-rm -rf eval_records/*
 
-# 3. 初始化目录结构
-echo "▶️ [3/4] 正在初始化评测目录..."
+echo "▶️ [3/5] 正在初始化评测目录..."
 echo "  - Models: $MODELS"
 echo "  - Modules: $MODULES"
 ./bin_ai_eval init --models "$MODELS" --modules "$MODULES"
 
-# 4. 嵌套循环执行矩阵测试
-echo "▶️ [4/4] 开始执行 5x4 矩阵评测..."
+echo "▶️ [4/5] 启动并行评测（单模型走批量 --module all）..."
+echo "  - Parallel jobs: $PARALLEL_JOBS"
 echo ""
 
-# 将逗号分隔的字符串转为数组
 IFS=',' read -ra MODEL_ARRAY <<< "$MODELS"
-IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
 
-# 暂时关闭 set -e，防止某个单项评测挂掉导致整个脚本退出
-set +e 
+run_one_model() {
+  local model="$1"
+  local log_file="eval_records/${model}/run_all.log"
+  mkdir -p "eval_records/${model}"
+  echo "--------------------------------------------------------"
+  echo "🏃 启动模型: [$model]（模块: all | 裁判: $JUDGE）"
+  echo "📄 日志文件: $log_file"
+  echo "--------------------------------------------------------"
+  if ./bin_ai_eval run --module all --model "$model" --judge-model "$JUDGE" >"$log_file" 2>&1; then
+    echo "✅ 模型 [$model] 评测完成"
+    return 0
+  fi
+  echo "⚠️  模型 [$model] 评测失败，请查看日志: $log_file"
+  return 1
+}
+
+running_pids=()
+running_models=()
+failed_models=()
 
 for model in "${MODEL_ARRAY[@]}"; do
-    for module in "${MODULE_ARRAY[@]}"; do
-        echo "--------------------------------------------------------"
-        echo "🏃 当前进度: 待测模型 = [$model] | 测试模块 = [$module]"
-        echo "⚖️  裁判模型: [$JUDGE]"
-        echo "--------------------------------------------------------"
-        
-        ./bin_ai_eval run --module "$module" --model "$model" --judge-model "$JUDGE"
-        
-        if [ $? -ne 0 ]; then
-            echo "⚠️  警告: [$model] 在 [$module] 的评测执行中出现异常中断，将跳过并继续..."
-        fi
-        echo ""
-    done
+  run_one_model "$model" &
+  running_pids+=("$!")
+  running_models+=("$model")
+
+  while [ "$(jobs -rp | wc -l | tr -d ' ')" -ge "$PARALLEL_JOBS" ]; do
+    sleep 1
+  done
 done
 
+for i in "${!running_pids[@]}"; do
+  pid="${running_pids[$i]}"
+  model="${running_models[$i]}"
+  if ! wait "$pid"; then
+    failed_models+=("$model")
+  fi
+done
+
+echo "▶️ [5/5] 生成 RESULT.md ..."
+./bin_ai_eval result
+
 echo "=========================================="
-echo "✅ 全量评测执行完毕！"
-echo "📂 所有测试代码、编译日志及裁判打分 (score.json) 已落盘至 ./eval_records 目录下。"
+echo "✅ 全量评测执行完毕"
+echo "📂 结果目录: ./eval_records"
+if [ "${#failed_models[@]}" -gt 0 ]; then
+  echo "⚠️  以下模型执行失败: ${failed_models[*]}"
+else
+  echo "🎉 所有模型执行成功"
+fi
 echo "=========================================="

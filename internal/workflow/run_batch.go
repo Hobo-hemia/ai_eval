@@ -194,20 +194,34 @@ func runUnifiedJudgePhase(ctx context.Context, p unifiedJudgeParams) (time.Durat
 	duration := time.Since(startedAt)
 	logProgress("Phase3", "Unified judge response received (%d chars)", len(raw))
 	scoreMap := map[string]module.Score{}
-	tagged := extractTaggedCodeBlocks(raw)
-	if len(tagged) == 0 {
-		logProgress("Phase3", "Unified judge tagged json missing, fallback for all modules")
-		return duration, fallbackScoreMap(p, duration, errors.New("missing tagged score blocks")), nil
+	payload, err := extractJSONObject(raw)
+	if err != nil {
+		logProgress("Phase3", "Unified judge json parse failed, fallback for all modules: %v", err)
+		return duration, fallbackScoreMap(p, duration, err), nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(payload), &obj); err != nil {
+		logProgress("Phase3", "Unified judge json unmarshal failed, fallback for all modules: %v", err)
+		return duration, fallbackScoreMap(p, duration, err), nil
+	}
+	moduleScoresRaw, ok := obj["module_scores"].(map[string]any)
+	if !ok {
+		logProgress("Phase3", "Unified judge missing module_scores, fallback for all modules")
+		return duration, fallbackScoreMap(p, duration, errors.New("missing module_scores")), nil
 	}
 	for _, m := range p.modules {
-		tag := scoreTagByModule(m)
-		block, ok := tagged[tag]
+		moduleRaw, ok := moduleScoresRaw[m]
 		if !ok {
-			scoreMap[m] = fallbackScoreForModule(p.modelName, p.judgeModel, m, p.phase1ByModule[m], roundSeconds(p.phase2Durations[m]), roundSeconds(duration), p.phase2Errors[m], fmt.Errorf("missing score block tag: %s", tag))
+			scoreMap[m] = fallbackScoreForModule(p.modelName, p.judgeModel, m, p.phase1ByModule[m], roundSeconds(p.phase2Durations[m]), roundSeconds(duration), p.phase2Errors[m], fmt.Errorf("missing module score: %s", m))
+			continue
+		}
+		blockBytes, err := json.Marshal(moduleRaw)
+		if err != nil {
+			scoreMap[m] = fallbackScoreForModule(p.modelName, p.judgeModel, m, p.phase1ByModule[m], roundSeconds(p.phase2Durations[m]), roundSeconds(duration), p.phase2Errors[m], err)
 			continue
 		}
 		normalized, err := normalizeJudgeJSON(
-			block,
+			string(blockBytes),
 			p.modelName,
 			m,
 			p.judgeModel,
@@ -320,21 +334,6 @@ func normalizeBatchModules(modules []string) ([]string, error) {
 	}
 	slices.Sort(out)
 	return out, nil
-}
-
-func scoreTagByModule(moduleID string) string {
-	switch moduleID {
-	case "m1_arch":
-		return "m1_score"
-	case "m2_biz":
-		return "m2_score"
-	case "m3_component":
-		return "m3_score"
-	case "m4_bugfix":
-		return "m4_score"
-	default:
-		return ""
-	}
 }
 
 func allocatePhase1BySize(modules []string, total time.Duration, content map[string]string) map[string]float64 {

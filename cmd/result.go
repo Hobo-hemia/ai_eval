@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"ai_eval/internal/module"
@@ -88,6 +89,7 @@ func collectScores(recordsDir string) ([]modelScores, error) {
 		if err := json.Unmarshal(raw, &s); err != nil {
 			return err
 		}
+		s = normalizeLegacyScoreShape(s, raw, moduleID)
 
 		ms, ok := agg[modelDir]
 		if !ok {
@@ -116,6 +118,121 @@ func collectScores(recordsDir string) ([]modelScores, error) {
 		return out[i].name < out[j].name
 	})
 	return out, nil
+}
+
+func normalizeLegacyScoreShape(s module.Score, raw []byte, moduleID string) module.Score {
+	if len(s.Breakdown) > 0 {
+		return s
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return s
+	}
+	breakdown := map[string]module.ScoreDetail{}
+	for i := 1; i <= 9; i++ {
+		scoreKey := fmt.Sprintf("D%d_score", i)
+		reasonKey := fmt.Sprintf("D%d_reason", i)
+		rawScore, ok := obj[scoreKey]
+		if !ok {
+			continue
+		}
+		scoreVal := int(anyNumber(rawScore))
+		dKey := fmt.Sprintf("D%d", i)
+		detail := module.ScoreDetail{
+			Dimension:   legacyDimensionByModule(moduleID, dKey),
+			Score:       scoreVal,
+			MaxScore:    legacyMaxByModule(moduleID, dKey),
+			LogEvidence: anyString(obj[reasonKey]),
+		}
+		if detail.Dimension == "" {
+			detail.Dimension = dKey
+		}
+		breakdown[dKey] = detail
+	}
+	if len(breakdown) > 0 {
+		s.Breakdown = breakdown
+	}
+	return s
+}
+
+func legacyMaxByModule(moduleID, dKey string) int {
+	table := map[string]map[string]int{
+		"m1_arch": {
+			"D1": 15, "D2": 35, "D3": 25, "D4": 25,
+		},
+		"m2_biz": {
+			"D1": 15, "D2": 30, "D3": 25, "D4": 15, "D5": 15,
+		},
+		"m3_component": {
+			"D1": 15, "D2": 30, "D3": 25, "D4": 15, "D5": 15,
+		},
+		"m4_bugfix": {
+			"D1": 10, "D2": 40, "D3": 25, "D4": 15, "D5": 10,
+		},
+	}
+	if t, ok := table[moduleID]; ok {
+		return t[dKey]
+	}
+	return 0
+}
+
+func legacyDimensionByModule(moduleID, dKey string) string {
+	table := map[string]map[string]string{
+		"m1_arch": {
+			"D1": "协议基础合法性与编译",
+			"D2": "业务功能结构抽象",
+			"D3": "接口聚合与收敛设计",
+			"D4": "历史包袱与防御性设计",
+		},
+		"m2_biz": {
+			"D1": "编译通过率",
+			"D2": "业务功能与并发防刷防御",
+			"D3": "事务保护与状态一致性",
+			"D4": "分布式降级与重试容错",
+			"D5": "可验证性与工程质量",
+		},
+		"m3_component": {
+			"D1": "编译通过率",
+			"D2": "惊群防御与 Singleflight 级抽象",
+			"D3": "细粒度锁与慢阻塞隔离",
+			"D4": "防御性编程与资源控制",
+			"D5": "可验证性与性能意识",
+		},
+		"m4_bugfix": {
+			"D1": "编译通过率",
+			"D2": "隐患挖掘与修复质量",
+			"D3": "规约验证结果",
+			"D4": "历史包袱约束遵守",
+			"D5": "代码性能与工程整洁度",
+		},
+	}
+	if t, ok := table[moduleID]; ok {
+		return t[dKey]
+	}
+	return dKey
+}
+
+func anyNumber(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case json.Number:
+		f, _ := n.Float64()
+		return f
+	default:
+		return 0
+	}
+}
+
+func anyString(v any) string {
+	s, _ := v.(string)
+	return strings.TrimSpace(s)
 }
 
 func renderResultMarkdown(models []modelScores) string {
@@ -186,23 +303,48 @@ func renderResultMarkdown(models []modelScores) string {
 }
 
 func renderCorrectnessSubTable(b *strings.Builder, models []modelScores, moduleLabel, moduleID string) {
+	columns, meta := ruleColumnsAndMeta(models, moduleID)
+	explicitD := hasExplicitDRules(models, moduleID)
 	b.WriteString("### " + moduleLabel + "\n\n")
-	b.WriteString("| 模型 | 总分 | 编译 | 测试 | 静态 | 运行时 |\n")
-	b.WriteString("| --- | --- | --- | --- | --- | --- |\n")
+	header := []string{"模型"}
+	for _, col := range columns {
+		header = append(header, col)
+	}
+	header = append(header, "总分")
+	b.WriteString("| " + strings.Join(header, " | ") + " |\n")
+	sep := make([]string, 0, len(header))
+	for range header {
+		sep = append(sep, "---")
+	}
+	b.WriteString("| " + strings.Join(sep, " | ") + " |\n")
 	for _, m := range models {
 		s := scoreByModule(m, moduleID)
-		b.WriteString(fmt.Sprintf(
-			"| %s | %d | %d | %d | %d | %d |\n",
-			escapePipe(m.name),
-			moduleTotalByRule(s),
-			scoreByDimension(s, "compile"),
-			scoreByDimension(s, "test"),
-			scoreByDimension(s, "static"),
-			scoreByDimension(s, "runtime"),
-		))
+		row := []string{escapePipe(m.name)}
+		for _, col := range columns {
+			row = append(row, fmt.Sprintf("%d", scoreByColumn(s, col, explicitD)))
+		}
+		row = append(row, fmt.Sprintf("%d", moduleTotalByRule(s)))
+		b.WriteString("| " + strings.Join(row, " | ") + " |\n")
 	}
 	if len(models) == 0 {
-		b.WriteString("| - | 0 | 0 | 0 | 0 | 0 |\n")
+		row := []string{"-"}
+		for range columns {
+			row = append(row, "0")
+		}
+		row = append(row, "0")
+		b.WriteString("| " + strings.Join(row, " | ") + " |\n")
+	}
+	if len(columns) > 0 {
+		labels := make([]string, 0, len(meta))
+		for _, col := range columns {
+			m := meta[col]
+			if m.maxScore > 0 {
+				labels = append(labels, fmt.Sprintf("- %s：%s（满分 %d 分）", col, m.dimension, m.maxScore))
+			} else {
+				labels = append(labels, fmt.Sprintf("- %s：%s", col, m.dimension))
+			}
+		}
+		b.WriteString("\n规则说明：\n" + strings.Join(labels, "\n") + "\n")
 	}
 	b.WriteString("\n")
 }
@@ -235,45 +377,130 @@ func moduleTotalByRule(s module.Score) int {
 	return s.TotalScore
 }
 
-func scoreByDimension(s module.Score, dim string) int {
-	key := ""
-	switch dim {
-	case "compile":
-		key = "execution_compile"
-	case "test":
-		key = "execution_test"
-	case "static":
-		key = "static_analysis"
-	case "runtime":
-		key = "execution_runtime"
+type ruleMeta struct {
+	dimension string
+	maxScore  int
+}
+
+func scoreKeyRank(k string) (rank int, num int) {
+	if strings.HasPrefix(k, "D") && len(k) > 1 {
+		n, err := strconv.Atoi(strings.TrimPrefix(k, "D"))
+		if err == nil {
+			return 0, n
+		}
 	}
-	if key != "" {
-		if d, ok := s.Breakdown[key]; ok {
+	switch k {
+	case "execution_compile":
+		return 1, 0
+	case "execution_test":
+		return 1, 1
+	case "static_analysis":
+		return 1, 2
+	case "execution_runtime":
+		return 1, 3
+	default:
+		return 2, 0
+	}
+}
+
+func ruleColumnsAndMeta(models []modelScores, moduleID string) ([]string, map[string]ruleMeta) {
+	explicitD := hasExplicitDRules(models, moduleID)
+	meta := map[string]ruleMeta{}
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	for _, m := range models {
+		s := scoreByModule(m, moduleID)
+		for k, d := range s.Breakdown {
+			label := normalizeRuleLabel(k, d.Dimension, explicitD)
+			if label == "" {
+				continue
+			}
+			if _, ok := seen[label]; !ok {
+				seen[label] = struct{}{}
+				out = append(out, label)
+			}
+			existing := meta[label]
+			if strings.TrimSpace(existing.dimension) == "" && strings.TrimSpace(d.Dimension) != "" {
+				existing.dimension = strings.TrimSpace(d.Dimension)
+			}
+			if d.MaxScore > existing.maxScore {
+				existing.maxScore = d.MaxScore
+			}
+			meta[label] = existing
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ri, ni := scoreKeyRank(out[i])
+		rj, nj := scoreKeyRank(out[j])
+		if ri != rj {
+			return ri < rj
+		}
+		if ni != nj {
+			return ni < nj
+		}
+		return out[i] < out[j]
+	})
+	return out, meta
+}
+
+func scoreByColumn(s module.Score, col string, explicitD bool) int {
+	for k, d := range s.Breakdown {
+		if normalizeRuleLabel(k, d.Dimension, explicitD) == col {
 			return d.Score
 		}
 	}
-	for _, d := range s.Breakdown {
-		name := strings.ToLower(strings.TrimSpace(d.Dimension))
-		switch dim {
-		case "compile":
-			if strings.Contains(name, "编译") || strings.Contains(name, "compile") {
-				return d.Score
+	return 0
+}
+
+func normalizeDKey(key string) (string, bool) {
+	if strings.HasPrefix(key, "D") && len(key) > 1 {
+		n := ""
+		for _, ch := range strings.TrimPrefix(key, "D") {
+			if ch >= '0' && ch <= '9' {
+				n += string(ch)
+				continue
 			}
-		case "test":
-			if strings.Contains(name, "测试") || strings.Contains(name, "test") || strings.Contains(name, "功能") {
-				return d.Score
-			}
-		case "static":
-			if strings.Contains(name, "静态") || strings.Contains(name, "规范") || strings.Contains(name, "analysis") || strings.Contains(name, "代码") {
-				return d.Score
-			}
-		case "runtime":
-			if strings.Contains(name, "运行时") || strings.Contains(name, "性能") || strings.Contains(name, "runtime") || strings.Contains(name, "efficiency") {
-				return d.Score
+			break
+		}
+		if n != "" {
+			return "D" + n, true
+		}
+	}
+	return "", false
+}
+
+func normalizeRuleLabel(key, dimension string, explicitD bool) string {
+	if dk, ok := normalizeDKey(strings.TrimSpace(key)); ok {
+		return dk
+	}
+	if explicitD {
+		return ""
+	}
+	name := strings.ToLower(strings.TrimSpace(dimension))
+	switch {
+	case strings.Contains(name, "编译"), strings.Contains(name, "compile"):
+		return "D1"
+	case strings.Contains(name, "测试"), strings.Contains(name, "test"), strings.Contains(name, "功能"):
+		return "D2"
+	case strings.Contains(name, "静态"), strings.Contains(name, "规范"), strings.Contains(name, "analysis"), strings.Contains(name, "代码"):
+		return "D3"
+	case strings.Contains(name, "运行时"), strings.Contains(name, "性能"), strings.Contains(name, "runtime"), strings.Contains(name, "efficiency"):
+		return "D4"
+	default:
+		return ""
+	}
+}
+
+func hasExplicitDRules(models []modelScores, moduleID string) bool {
+	for _, m := range models {
+		s := scoreByModule(m, moduleID)
+		for k := range s.Breakdown {
+			if _, ok := normalizeDKey(k); ok {
+				return true
 			}
 		}
 	}
-	return 0
+	return false
 }
 
 func escapePipe(v string) string {

@@ -368,13 +368,9 @@ func phase3PromptForModules(
 	b.WriteString("2) 若怀疑存在语义误伤，可结合代码语义纠偏，并在理由中解释。\n")
 	b.WriteString("3) 必须按各模块 JUDGE_AGENT 的维度和权重打分，不得强行统一成 25/25/25/25。\n")
 	b.WriteString("4) 轻微工程错误（如 unused import）仅影响对应维度，禁止因此将模块总分直接清零。\n")
-	b.WriteString("5) 每个 breakdown 项都要给出：dimension/score/max_score/log_evidence/code_evidence。\n")
-	b.WriteString("6) 输出 4 个带标签的 JSON 代码块，禁止输出其它文本：\n")
-	b.WriteString("   - ```m1_score <M1 score json>\n")
-	b.WriteString("   - ```m2_score <M2 score json>\n")
-	b.WriteString("   - ```m3_score <M3 score json>\n")
-	b.WriteString("   - ```m4_score <M4 score json>\n")
-	b.WriteString("7) 每个 JSON 必须使用以下结构（模块独立，不要混在同一个 JSON 里）：\n")
-	b.WriteString(fmt.Sprintf("{\"model\":\"%s\",\"module_evaluated\":\"m1_arch\",\"judge_model\":\"%s\",\"total_score\":0,\"breakdown\":{\"<custom_key>\":{\"dimension\":\"\",\"score\":0,\"max_score\":0,\"log_evidence\":\"\",\"code_evidence\":\"\"}},\"final_reasoning\":\"\"}", modelDir, judgeModel))
+	b.WriteString("5) 必须只输出一个合法 JSON 对象，禁止 markdown、禁止代码块、禁止额外解释文字。\n")
+	b.WriteString("6) 每个 breakdown 项都要给出：dimension/score/max_score/log_evidence/code_evidence。\n")
+	b.WriteString("7) 输出 JSON 必须使用以下结构（字段名保持一致，模块分项维度可自定义）：\n")
+	b.WriteString(fmt.Sprintf("{\"model\":\"%s\",\"judge_model\":\"%s\",\"module_scores\":{\"m1_arch\":{\"total_score\":0,\"breakdown\":{\"<custom_key>\":{\"dimension\":\"\",\"score\":0,\"max_score\":0,\"log_evidence\":\"\",\"code_evidence\":\"\"}},\"final_reasoning\":\"\"},\"m2_biz\":{\"total_score\":0,\"breakdown\":{\"<custom_key>\":{\"dimension\":\"\",\"score\":0,\"max_score\":0,\"log_evidence\":\"\",\"code_evidence\":\"\"}},\"final_reasoning\":\"\"},\"m3_component\":{\"total_score\":0,\"breakdown\":{\"<custom_key>\":{\"dimension\":\"\",\"score\":0,\"max_score\":0,\"log_evidence\":\"\",\"code_evidence\":\"\"}},\"final_reasoning\":\"\"},\"m4_bugfix\":{\"total_score\":0,\"breakdown\":{\"<custom_key>\":{\"dimension\":\"\",\"score\":0,\"max_score\":0,\"log_evidence\":\"\",\"code_evidence\":\"\"}},\"final_reasoning\":\"\"}},\"final_reasoning\":\"\"}", modelDir, judgeModel))
 	return b.String(), nil
 }

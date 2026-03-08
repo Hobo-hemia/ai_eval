@@ -61,6 +61,34 @@ ai_eval run --module m4 --model "gpt-5.3-codex-low-fast" --judge-model "gemini-3
 ai_eval clear
 ```
 
+## run_all.sh 用法
+
+项目提供批量执行脚本：`run_all.sh`。
+
+默认行为：
+- 单模型走一次批量评测：`ai_eval run --module all --model <MODEL> --judge-model <JUDGE>`
+- 多模型并行执行（默认并发 `PARALLEL_JOBS=3`）
+- 结束后自动生成 `RESULT.md`
+
+可配置参数（环境变量）：
+- `MODELS`：备选模型列表，逗号分隔
+- `JUDGE`：裁判模型
+- `MODULES`：初始化模块列表（通常为 `m1,m2,m3,m4`）
+- `PARALLEL_JOBS`：并行模型数
+
+示例：
+
+```bash
+# 使用默认配置
+bash run_all.sh
+
+# 自定义候选模型 + 裁判模型 + 并行度
+MODELS="gpt-5.3-codex,opus-4.5,gemini-3-pro,kimi-k2.5,composer-1" \
+JUDGE="opus-4.6" \
+PARALLEL_JOBS=5 \
+bash run_all.sh
+```
+
 ## 当前行为（以 m1/m2/m3/m4 为例）
 
 - 当前支持模块：`m1` / `m1_arch`、`m2` / `m2_biz`、`m3` / `m3_component`、`m4` / `m4_bugfix`
