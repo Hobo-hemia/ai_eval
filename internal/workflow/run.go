@@ -64,11 +64,13 @@ func RunAutoEvaluation(ctx context.Context, cfg AutoRunConfig) (*AutoRunResult, 
 
 	phase2StartedAt := time.Now()
 	logProgress("Phase2", "Running harness build+test")
-	if err := runHarnessByModule(ctx, root, modelDir, moduleID); err != nil {
-		return nil, err
+	phase2Err := runHarnessByModule(ctx, root, modelDir, moduleID)
+	if phase2Err != nil {
+		logProgress("Phase2", "Harness failed, continue to judge with penalty: %v", phase2Err)
+	} else {
+		logProgress("Phase2", "Harness completed, logs written")
 	}
 	phase2Duration := time.Since(phase2StartedAt)
-	logProgress("Phase2", "Harness completed, logs written")
 
 	if _, err := runJudgePhase(ctx, judgeParams{
 		root:         root,
@@ -80,6 +82,8 @@ func RunAutoEvaluation(ctx context.Context, cfg AutoRunConfig) (*AutoRunResult, 
 		scoreFile:    scoreFile,
 		phase1Second: roundSeconds(phase1Duration),
 		phase2Second: roundSeconds(phase2Duration),
+		phase2Failed: phase2Err != nil,
+		phase2Error:  errorString(phase2Err),
 	}); err != nil {
 		return nil, err
 	}
@@ -96,6 +100,13 @@ func RunAutoEvaluation(ctx context.Context, cfg AutoRunConfig) (*AutoRunResult, 
 		TestLogFile:  testLogFile,
 		ScoreFile:    scoreFile,
 	}, nil
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 func writeRecordShell(resultFile, buildLogFile, testLogFile, scoreFile, modelName, moduleID string) error {

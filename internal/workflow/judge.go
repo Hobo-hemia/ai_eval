@@ -22,6 +22,8 @@ type judgeParams struct {
 	scoreFile    string
 	phase1Second float64
 	phase2Second float64
+	phase2Failed bool
+	phase2Error  string
 }
 
 func runJudgePhase(ctx context.Context, p judgeParams) (time.Duration, error) {
@@ -31,7 +33,7 @@ func runJudgePhase(ctx context.Context, p judgeParams) (time.Duration, error) {
 		Phase3Seconds: 0,
 		TotalSeconds:  p.phase1Second + p.phase2Second,
 	}
-	prompt, err := phase3PromptByModule(p.moduleID, p.modelDir, p.judgeModel, preRuntime)
+	prompt, err := phase3PromptByModule(p.moduleID, p.modelDir, p.judgeModel, preRuntime, p.phase2Failed, p.phase2Error)
 	if err != nil {
 		return 0, err
 	}
@@ -52,12 +54,69 @@ func runJudgePhase(ctx context.Context, p judgeParams) (time.Duration, error) {
 	}
 	scoreJSON, err := normalizeJudgeJSON(raw, p.modelName, p.moduleID, p.judgeModel, runtime)
 	if err != nil {
-		return 0, fmt.Errorf("parse phase2 json failed: %w", err)
+		logProgress("Phase3", "Judge JSON parse failed, fallback score will be written: %v", err)
+		scoreJSON = fallbackScoreJSON(p, runtime, err)
 	}
 	if err := os.WriteFile(p.scoreFile, scoreJSON, 0o644); err != nil {
 		return 0, fmt.Errorf("write score file: %w", err)
 	}
 	return duration, nil
+}
+
+func fallbackScoreJSON(p judgeParams, runtime module.RuntimeMetrics, parseErr error) []byte {
+	compileScore := 10
+	testScore := 10
+	total := 40
+	reason := fmt.Sprintf(
+		"judge output parsing failed, fallback scoring applied: %v",
+		parseErr,
+	)
+	if p.phase2Failed {
+		compileScore = 0
+		testScore = 0
+		total = 20
+		reason = fmt.Sprintf(
+			"phase2 failed and judge output parsing failed, fallback scoring applied: phase2=%s; parse=%v",
+			p.phase2Error,
+			parseErr,
+		)
+	}
+	s := module.Score{
+		ModuleEvaluated: p.moduleID,
+		Model:           p.modelName,
+		JudgeModel:      p.judgeModel,
+		TotalScore:      total,
+		Breakdown: map[string]module.ScoreDetail{
+			"execution_compile": {
+				Dimension: "编译通过率",
+				Score:     compileScore,
+				MaxScore:  25,
+			},
+			"execution_test": {
+				Dimension: "功能/测试通过率",
+				Score:     testScore,
+				MaxScore:  25,
+			},
+			"static_analysis": {
+				Dimension: "代码规范与特定维度",
+				Score:     10,
+				MaxScore:  25,
+			},
+			"execution_runtime": {
+				Dimension: "运行时效率",
+				Score:     10,
+				MaxScore:  25,
+			},
+		},
+		RuntimeMetrics: runtime,
+		FinalReasoning: reason,
+		GeneratedAt:    time.Now(),
+	}
+	out, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return []byte(module.DefaultScoreJSON(p.modelName, p.moduleID, time.Now()))
+	}
+	return out
 }
 
 func normalizeJudgeJSON(

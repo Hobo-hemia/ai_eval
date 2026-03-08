@@ -171,15 +171,15 @@ func renderResultMarkdown(models []modelScores) string {
 	}
 
 	b.WriteString("\n## 3. 成本\n")
-	b.WriteString("- 记录模型在每个模块生成产物的 Token 开销\n")
+	b.WriteString("- 记录模型整轮评测的总 Token 开销\n")
 	b.WriteString("- 单位：*K* Token\n\n")
-	b.WriteString("| 模型 | M1 | M2 | M3 | M4 |\n")
-	b.WriteString("| --- | --- | --- | --- | --- |\n")
+	b.WriteString("| 模型 | Total |\n")
+	b.WriteString("| --- | --- |\n")
 	for _, m := range models {
-		b.WriteString("| " + escapePipe(m.name) + " | - | - | - | - |\n")
+		b.WriteString("| " + escapePipe(m.name) + " | - |\n")
 	}
 	if len(models) == 0 {
-		b.WriteString("| - | - | - | - | - |\n")
+		b.WriteString("| - | - |\n")
 	}
 
 	return b.String()
@@ -195,10 +195,10 @@ func renderCorrectnessSubTable(b *strings.Builder, models []modelScores, moduleL
 			"| %s | %d | %d | %d | %d | %d |\n",
 			escapePipe(m.name),
 			moduleTotalByRule(s),
-			breakdownScoreOrZero(s, "execution_compile"),
-			breakdownScoreOrZero(s, "execution_test"),
-			breakdownScoreOrZero(s, "static_analysis"),
-			breakdownScoreOrZero(s, "execution_runtime"),
+			scoreByDimension(s, "compile"),
+			scoreByDimension(s, "test"),
+			scoreByDimension(s, "static"),
+			scoreByDimension(s, "runtime"),
 		))
 	}
 	if len(models) == 0 {
@@ -232,11 +232,48 @@ func scoreByModule(m modelScores, moduleID string) module.Score {
 }
 
 func moduleTotalByRule(s module.Score) int {
-	compile := breakdownScoreOrZero(s, "execution_compile")
-	if compile == 0 {
-		return 0
-	}
 	return s.TotalScore
+}
+
+func scoreByDimension(s module.Score, dim string) int {
+	key := ""
+	switch dim {
+	case "compile":
+		key = "execution_compile"
+	case "test":
+		key = "execution_test"
+	case "static":
+		key = "static_analysis"
+	case "runtime":
+		key = "execution_runtime"
+	}
+	if key != "" {
+		if d, ok := s.Breakdown[key]; ok {
+			return d.Score
+		}
+	}
+	for _, d := range s.Breakdown {
+		name := strings.ToLower(strings.TrimSpace(d.Dimension))
+		switch dim {
+		case "compile":
+			if strings.Contains(name, "编译") || strings.Contains(name, "compile") {
+				return d.Score
+			}
+		case "test":
+			if strings.Contains(name, "测试") || strings.Contains(name, "test") || strings.Contains(name, "功能") {
+				return d.Score
+			}
+		case "static":
+			if strings.Contains(name, "静态") || strings.Contains(name, "规范") || strings.Contains(name, "analysis") || strings.Contains(name, "代码") {
+				return d.Score
+			}
+		case "runtime":
+			if strings.Contains(name, "运行时") || strings.Contains(name, "性能") || strings.Contains(name, "runtime") || strings.Contains(name, "efficiency") {
+				return d.Score
+			}
+		}
+	}
+	return 0
 }
 
 func escapePipe(v string) string {

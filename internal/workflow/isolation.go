@@ -43,6 +43,44 @@ func preparePhase1Workspace(root, moduleID string) (string, func(), error) {
 	return workspaceDir, cleanup, nil
 }
 
+func preparePhase1WorkspaceForModules(root string, modules []string) (string, func(), error) {
+	baseDir := filepath.Join(root, ".tmp")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		return "", nil, fmt.Errorf("mkdir tmp root failed: %w", err)
+	}
+	workspaceDir, err := os.MkdirTemp(baseDir, "ai_eval_phase1_batch.")
+	if err != nil {
+		return "", nil, fmt.Errorf("create phase1 batch workspace failed: %w", err)
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(workspaceDir)
+	}
+
+	for _, moduleID := range modules {
+		moduleDir := filepath.Join(root, "modules", moduleID)
+		inputSrc := filepath.Join(moduleDir, "input")
+		inputDst := filepath.Join(workspaceDir, "modules", moduleID, "input")
+		if err := copyDirectory(inputSrc, inputDst); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("copy input materials failed for %s: %w", moduleID, err)
+		}
+		ruleSrc := filepath.Join(moduleDir, ".cursorrules")
+		if _, err := os.Stat(ruleSrc); err == nil {
+			raw, readErr := os.ReadFile(ruleSrc)
+			if readErr != nil {
+				cleanup()
+				return "", nil, fmt.Errorf("read .cursorrules failed for %s: %w", moduleID, readErr)
+			}
+			ruleDst := filepath.Join(workspaceDir, "modules", moduleID, ".cursorrules")
+			if writeErr := os.WriteFile(ruleDst, raw, 0o644); writeErr != nil {
+				cleanup()
+				return "", nil, fmt.Errorf("write .cursorrules failed for %s: %w", moduleID, writeErr)
+			}
+		}
+	}
+	return workspaceDir, cleanup, nil
+}
+
 func copyDirectory(src, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

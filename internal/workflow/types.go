@@ -18,3 +18,11 @@ type AutoRunResult struct {
 	TestLogFile  string
 	ScoreFile    string
 }
+
+type AutoRunBatchResult struct {
+	Model      string
+	ModelDir   string
+	JudgeModel string
+	Modules    []string
+	ScoreFiles map[string]string
+}

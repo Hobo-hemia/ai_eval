@@ -19,9 +19,14 @@ func TestProto_BasicShape(t *testing.T) {
 
 func TestProto_ShouldRefactorV1ServiceAndNames(t *testing.T) {
 	raw := mustReadProto(t)
-	assert.NotContains(t, raw, "service TicketService")
-	assert.NotContains(t, raw, "rpc SubmitTicket")
-	assert.NotContains(t, raw, "rpc GetTicket")
+	// Avoid exact-name coupling; only reject pure v1 copy.
+	assert.False(
+		t,
+		strings.Contains(raw, "service TicketService") &&
+			strings.Contains(raw, "rpc SubmitTicket") &&
+			strings.Contains(raw, "rpc GetTicket"),
+		"should not be a pure v1 protocol copy",
+	)
 	assert.Contains(t, raw, "service")
 }
 

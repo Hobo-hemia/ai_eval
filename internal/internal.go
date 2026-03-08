@@ -90,9 +90,14 @@ func DefaultResultGo() string {
 
 type AutoRunConfig = workflow.AutoRunConfig
 type AutoRunResult = workflow.AutoRunResult
+type AutoRunBatchResult = workflow.AutoRunBatchResult
 
 func RunAutoEvaluation(ctx context.Context, cfg AutoRunConfig) (*AutoRunResult, error) {
 	return workflow.RunAutoEvaluation(ctx, cfg)
+}
+
+func RunAutoEvaluationBatch(ctx context.Context, cfg AutoRunConfig, modules []string) (*AutoRunBatchResult, error) {
+	return workflow.RunAutoEvaluationBatch(ctx, cfg, modules)
 }
 
 func ModelDirName(modelName string) string {
