@@ -10,6 +10,21 @@ import (
 
 func phase1PromptByModule(moduleID string) (string, error) {
 	switch moduleID {
+	case "m1_arch":
+		return strings.TrimSpace(`
+你现在在 m1_arch 模块评测中，请严格按以下文件执行，不要省略任何要求：
+- @input/prd.md
+- @input/api.proto
+- @input/guidance.md
+- @.cursorrules
+
+硬性要求：
+1) 你是后端协议架构师，需要基于产品语言 PRD 抽象并重构协议，而不是按功能点逐条罗列接口。
+2) 结果必须是“完整的改造后 proto 文件”，且 package 升级到 v2。
+3) 必须包含：已有接口改名、字段新增/删除、以及新增能力的协议抽象。
+4) 新增 rpc 总数必须小于 5（鼓励聚合抽象）。
+5) 只输出一个代码块：改造后的 proto 内容（不要解释文字）。
+`), nil
 	case "m2_biz":
 		return strings.TrimSpace(`
 你现在在 m2_biz 模块评测中，请严格按以下文件执行，不要省略任何要求：
@@ -68,6 +83,30 @@ func phase1PromptByModule(moduleID string) (string, error) {
 
 func phase3PromptByModule(moduleID, modelDir, judgeModel string, runtime module.RuntimeMetrics) (string, error) {
 	switch moduleID {
+	case "m1_arch":
+		return strings.TrimSpace(fmt.Sprintf(`
+请作为 M1 裁判严格评分。你必须遵循以下规则文件：
+- @modules/m1_arch/JUDGE_AGENT.md
+
+评分输入材料：
+- @eval_records/%[1]s/m1_arch/m1_result.proto
+- @eval_records/%[1]s/m1_arch/m1_build.log
+- @eval_records/%[1]s/m1_arch/m1_test.log
+
+运行时长指标（必须在输出 JSON 中填写 runtime_metrics）：
+- phase1_seconds = %[3].1f
+- phase2_seconds = %[4].1f
+- phase3_seconds = %[5].1f
+- total_seconds = %[6].1f
+
+输出要求（强制）：
+1) 只输出 JSON，禁止 markdown 和额外说明
+2) 按 100 分制给出总分与分项
+3) 重点评估：协议抽象能力、字段演进正确性、接口收敛质量
+4) 在 JSON 中填写：
+   - "judge_model": "%[2]s"
+   - "runtime_metrics": {"phase1_seconds": x, "phase2_seconds": y, "phase3_seconds": z, "total_seconds": t}
+`, modelDir, judgeModel, runtime.Phase1Seconds, runtime.Phase2Seconds, runtime.Phase3Seconds, runtime.TotalSeconds)), nil
 	case "m2_biz":
 		return strings.TrimSpace(fmt.Sprintf(`
 请作为 M2 裁判严格评分。你必须遵循以下规则文件：

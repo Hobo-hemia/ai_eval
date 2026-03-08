@@ -31,7 +31,7 @@ func runRun(args []string) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	var (
-		moduleID   = fs.String("module", "", "module id, currently supports: m2|m2_biz|m3|m3_component|m4|m4_bugfix")
+		moduleID   = fs.String("module", "", "module id, currently supports: m1|m1_arch|m2|m2_biz|m3|m3_component|m4|m4_bugfix")
 		modelName  = fs.String("model", "", "model id to evaluate")
 		judgeModel = fs.String("judge-model", "gemini-3-flash", "judge model id")
 		cursorBin  = fs.String("cursor-bin", "cursor-agent", "cursor CLI binary path")

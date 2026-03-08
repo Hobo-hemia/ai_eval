@@ -40,7 +40,7 @@ func DefaultDirectories() []string {
 func ResultFileByModule(module string) string {
 	switch module {
 	case "m1_arch":
-		return "m1_result.go"
+		return "m1_result.proto"
 	case "m2_biz":
 		return "m2_result.go"
 	case "m3_component":
@@ -84,6 +84,8 @@ func TestLogFileByModule(module string) string {
 
 func NormalizeAutoModule(raw string) (string, error) {
 	switch normalizeModule(raw) {
+	case "m1":
+		return "m1_arch", nil
 	case "m2":
 		return "m2_biz", nil
 	case "m3":
@@ -91,12 +93,14 @@ func NormalizeAutoModule(raw string) (string, error) {
 	case "m4":
 		return "m4_bugfix", nil
 	default:
-		return "", fmt.Errorf("unsupported module: %s (expected: m2/m2_biz or m3/m3_component or m4/m4_bugfix)", raw)
+		return "", fmt.Errorf("unsupported module: %s (expected: m1/m1_arch or m2/m2_biz or m3/m3_component or m4/m4_bugfix)", raw)
 	}
 }
 
 func normalizeModule(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "m1", "m1_arch":
+		return "m1"
 	case "m2", "m2_biz":
 		return "m2"
 	case "m3", "m3_component":

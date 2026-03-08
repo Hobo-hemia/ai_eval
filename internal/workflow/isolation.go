@@ -70,6 +70,11 @@ func cleanupIntermediateArtifacts(recordDir, moduleID string) {
 		filepath.Join(recordDir, "phase2_raw_output.txt"),
 	}
 	switch moduleID {
+	case "m1_arch":
+		paths = append(paths,
+			filepath.Join(recordDir, "m1_generated_test.go"),
+			filepath.Join(recordDir, "m1_result_test.go"),
+		)
 	case "m2_biz":
 		paths = append(paths,
 			filepath.Join(recordDir, "m2_generated_test.go"),

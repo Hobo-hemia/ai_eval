@@ -99,7 +99,7 @@ func RunAutoEvaluation(ctx context.Context, cfg AutoRunConfig) (*AutoRunResult, 
 }
 
 func writeRecordShell(resultFile, buildLogFile, testLogFile, scoreFile, modelName, moduleID string) error {
-	if err := writeFileIfNotExist(resultFile, defaultResultGo()); err != nil {
+	if err := writeFileIfNotExist(resultFile, defaultResultByModule(moduleID)); err != nil {
 		return err
 	}
 	_ = os.WriteFile(buildLogFile, []byte(""), 0o644)
@@ -122,6 +122,10 @@ func writeFileIfNotExist(path, content string) error {
 	return nil
 }
 
-func defaultResultGo() string {
+func defaultResultByModule(moduleID string) string {
+	if moduleID == "m1_arch" {
+		return `syntax = "proto3";
+`
+	}
 	return "package result\n"
 }

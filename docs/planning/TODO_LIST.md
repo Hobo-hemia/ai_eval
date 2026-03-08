@@ -5,8 +5,8 @@
 ## Phase 1：题目物料补齐
 
 ### M1 架构生成
-- [ ] 补全 `modules/m1_arch/input/api.proto` 的真实协议定义（service、message、字段约束、可选 PGV 约束）。
-- [ ] 在 `modules/m1_arch/tests/` 增加黑盒测试（编译、校验调用、分层与错误包装规范）。
+- [x] 补全 `modules/m1_arch/input/api.proto` 的真实协议定义与演进场景（v1 -> v2）。
+- [x] 在 `modules/m1_arch/tests/` 增加可量化黑盒测试（抽象收敛、字段演进、功能覆盖）。
 
 ### M2 业务实现
 - [x] 补全 `modules/m2_biz/input/biz_spec.md` 的真实业务流程与边界条件。

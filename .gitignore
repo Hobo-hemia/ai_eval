@@ -11,6 +11,7 @@
 /modules/m3_component/m3_result_test.go
 /modules/m2_biz/m2_result.go
 /modules/m2_biz/m2_result_test.go
+/modules/m1_arch/m1_result.proto
 
 # Binary documents are not tracked by default.
 *.pdf

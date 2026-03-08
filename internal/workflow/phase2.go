@@ -11,6 +11,8 @@ import (
 
 func runHarnessByModule(ctx context.Context, root, modelDir, moduleID string) error {
 	switch moduleID {
+	case "m1_arch":
+		return runHarnessScript(ctx, root, "modules/m1_arch/tests/run_full_chain.sh", modelDir)
 	case "m2_biz":
 		return runHarnessScript(ctx, root, "modules/m2_biz/tests/run_full_chain.sh", modelDir)
 	case "m3_component":

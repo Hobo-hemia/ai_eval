@@ -4,15 +4,30 @@ package m1.arch.v1;
 
 option go_package = "ai_eval/modules/m1_arch/input;archv1";
 
-// TODO: 待补充真实评测题目协议定义。
-service PlaceholderService {
-  rpc Ping(PingRequest) returns (PingResponse) {}
+// v1: 旧版在线工单接口（待升级）
+service TicketService {
+  rpc SubmitTicket(SubmitTicketRequest) returns (SubmitTicketResponse) {}
+  rpc GetTicket(GetTicketRequest) returns (GetTicketResponse) {}
 }
 
-message PingRequest {
-  string trace_id = 1;
+message SubmitTicketRequest {
+  string user_id = 1;
+  string title = 2;
+  string content = 3;
+  string channel = 4; // app/web
 }
 
-message PingResponse {
-  string message = 1;
+message SubmitTicketResponse {
+  string ticket_id = 1;
+}
+
+message GetTicketRequest {
+  string ticket_id = 1;
+}
+
+message GetTicketResponse {
+  string ticket_id = 1;
+  string status = 2;
+  string owner_id = 3;
+  int64 updated_at = 4;
 }
