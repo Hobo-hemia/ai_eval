@@ -37,6 +37,7 @@ func DefaultDirectories() []string {
 	dirs := []string{
 		"docs",
 		"templates",
+		"eval_records",
 		"modules/m1_arch/input",
 		"modules/m1_arch/tests",
 		"modules/m2_biz/input",
@@ -45,12 +46,6 @@ func DefaultDirectories() []string {
 		"modules/m3_component/tests",
 		"modules/m4_bugfix/input",
 		"modules/m4_bugfix/tests",
-	}
-
-	for _, model := range supportedModels {
-		for _, module := range supportedModules {
-			dirs = append(dirs, "eval_records/"+model+"/"+module)
-		}
 	}
 	return dirs
 }

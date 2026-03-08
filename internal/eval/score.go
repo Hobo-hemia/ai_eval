@@ -8,8 +8,10 @@ import (
 type Score struct {
 	ModuleEvaluated string                 `json:"module_evaluated"`
 	Model           string                 `json:"model"`
+	JudgeModel      string                 `json:"judge_model,omitempty"`
 	TotalScore      int                    `json:"total_score"`
 	Breakdown       map[string]ScoreDetail `json:"breakdown"`
+	RuntimeMetrics  RuntimeMetrics         `json:"runtime_metrics"`
 	FinalReasoning  string                 `json:"final_reasoning"`
 	GeneratedAt     time.Time              `json:"generated_at"`
 }
@@ -20,6 +22,13 @@ type ScoreDetail struct {
 	MaxScore     int    `json:"max_score"`
 	LogEvidence  string `json:"log_evidence,omitempty"`
 	CodeEvidence string `json:"code_evidence,omitempty"`
+}
+
+type RuntimeMetrics struct {
+	Phase1Seconds float64 `json:"phase1_seconds"`
+	Phase2Seconds float64 `json:"phase2_seconds"`
+	Phase3Seconds float64 `json:"phase3_seconds"`
+	TotalSeconds  float64 `json:"total_seconds"`
 }
 
 func DefaultScoreJSON(model, module string, now time.Time) string {
@@ -43,7 +52,13 @@ func DefaultScoreJSON(model, module string, now time.Time) string {
 				Score:     0,
 				MaxScore:  0,
 			},
+			"execution_runtime": {
+				Dimension: "运行时效率",
+				Score:     0,
+				MaxScore:  0,
+			},
 		},
+		RuntimeMetrics: RuntimeMetrics{},
 		FinalReasoning: "",
 		GeneratedAt:    now,
 	}

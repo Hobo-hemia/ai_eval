@@ -28,7 +28,8 @@
 - Step 1: 检查 `build.log`，确定编译基准分。
 - Step 2: 检查 `test.log`，确定功能基准分。
 - Step 3: 对照 `result.go` 做静态审查（规范、命名、并发控制、注释）。
-- Step 4: 汇总分数并输出 JSON。
+- Step 4: 结合输入中的 `runtime_metrics` 评估运行时效率。
+- Step 5: 汇总分数并输出 JSON。
 
 ## Output Format（严格）
 
@@ -38,6 +39,8 @@
 
 {
   "module_evaluated": "M1/M2/M3/M4",
+  "model": "...",
+  "judge_model": "...",
   "total_score": 0,
   "breakdown": {
     "execution_compile": {
@@ -57,7 +60,20 @@
       "score": 0,
       "max_score": 0,
       "code_evidence": "..."
+    },
+    "execution_runtime": {
+      "dimension": "运行时效率",
+      "score": 0,
+      "max_score": 0,
+      "log_evidence": "..."
     }
   },
-  "final_reasoning": "..."
+  "runtime_metrics": {
+    "phase1_seconds": 0,
+    "phase2_seconds": 0,
+    "phase3_seconds": 0,
+    "total_seconds": 0
+  },
+  "final_reasoning": "...",
+  "generated_at": "RFC3339"
 }
