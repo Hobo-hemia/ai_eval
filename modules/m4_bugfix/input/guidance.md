@@ -1,25 +1,20 @@
-Role: 资深 Go 后端开发工程师 / 质量保证专家
-Task: TDD 缺陷自愈与单测闭环
+Role: 顶级 Go 缺陷排查与自愈专家
+Task: 诊断并彻底治愈高并发结算服务的连环故障
 
-请阅读缺陷描述 @bug_report.md 以及存在 Bug 的源文件 @legacy_code.go。请严格遵循当前工作区 .cursorrules，按照 TDD 原则定位并修复缺陷。
+请阅读故障现象报告 @bug_report.md 以及存在严重历史包袱的源文件 @legacy_code.go。请严格遵循当前工作区 .cursorrules，按照 TDD 原则定位并修复缺陷。
 
-【必须保持的对外契约】：
-1. 保持以下声明不变（名称、签名、语义）：
+【约束与红线】：
+1. 保持接口签名绝对静止：
    - `type RiskNotifier interface { NotifyHighRisk(ctx context.Context, day string, amount int64) error }`
    - `func NewSettlementService(notifier RiskNotifier) *SettlementService`
    - `func (s *SettlementService) AddTransactions(ctx context.Context, day string, amounts []int64) (int64, error)`
-2. 不允许更改常量含义：`riskThreshold` 语义仍为风险告警阈值。
-3. 允许在实现内部新增必要私有 helper，但禁止改动对外方法签名。
+2. 保持原有常量含义。
+3. 如果告警过程中触发了任何失败（包括网络超时），必须保证**账务与告警状态的一致性**，不能出现“钱已经加上去了，但告警永远不再发送”的“脏账”状态。
 
 【核心验收要求】：
-1. 缺陷定位与注释（强制规则）：在修改代码的具体位置，必须使用 `// BUGFIX: [缺陷原因简述]` 添加修复注释。
-2. 代码修复：彻底修复 `legacy_code.go` 中的隐患，确保不引入新的并发死锁、重复告警或溢出问题。
-3. 关键行为：
-   - 告警语义必须是 **exactly-once-on-success**（成功后不重复，失败后必须可重试）。
-   - 告警逻辑必须正确处理 `context.Canceled`，不得把失败误记为“已告警”。
-   - 当本次调用触发告警但 notifier 返回错误时，本次调用必须失败且不提交账务累计（避免状态不一致）。
-   - notifier 调用必须在锁外执行。
-4. 测试驱动：使用 gomock 与 testify，编写可覆盖并发、失败重试与上下文取消边界的单测，验证 Bug 已被修复。
+1. 我们不再明示你具体的“死锁点”或“并发冲突点”，请通过观察故障报告中的表象（如死锁、余额跳变、告警风暴），自行发现 `legacy_code` 中隐藏的所有隐患。
+2. 缺陷定位标注：在修改代码的具体位置，强制使用 `// BUGFIX: [你发现的深层根因与修复逻辑]` 添加注释（至少识别出 4 处独立缺陷）。
+3. 单元测试反击战：使用 `gomock` 与 `testify` 编写“极端刁钻”的单元测试。测试必须模拟：大数溢出、下游依赖被取消后恢复、下游通知器在回调时重入系统等恶劣情况。
 
 【输出要求】：
 请按顺序输出两段代码块：

@@ -18,6 +18,8 @@ func Execute(args []string) int {
 			return runRun(args[1:])
 		case "clear":
 			return runClear(args[1:])
+		case "result":
+			return runResult(args[1:])
 		case "-h", "--help", "help":
 			printUsage()
 			return 0
@@ -75,6 +77,7 @@ func printUsage() {
 	fmt.Println("  ai_eval init --models \"m1,m2\" [--modules \"m4\"]")
 	fmt.Println("  ai_eval run --module m4 --model \"gpt-5.3-codex\" [--judge-model \"gemini-3-flash\"]")
 	fmt.Println("  ai_eval clear [--dir eval_records] [--keep-readme=true]")
+	fmt.Println("  ai_eval result [--dir eval_records] [--out RESULT.md]")
 	fmt.Println("")
 	fmt.Println("Backward-compatible:")
 	fmt.Println("  ai_eval --module m4 --model \"gpt-5.3-codex\"")

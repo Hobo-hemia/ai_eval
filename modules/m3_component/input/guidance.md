@@ -1,22 +1,20 @@
-Role: 资深 Go 基础组件架构工程师
-Task: 设计高抽象、高复用、高并发缓存组件
+Role: 顶级 Go 基础组件架构专家
+Task: 设计在极端脏环境下仍能保持稳定吞吐的并发缓存
 
 请阅读并严格遵循：
 - @input/rate_limit_spec.md
 - @.cursorrules
 
-你需要输出一个可复用组件 `ShardCache[K, V]`，用于多业务共享。重点不是业务逻辑本身，而是：
-1) 抽象能力（泛型 + 配置化）
-2) 性能能力（分片 + singleflight + 锁粒度）
-3) 工程封装（对外 API 稳定、内部状态可控、可观测统计）
+你需要输出一个具有极高鲁棒性的可复用组件 `ShardCache[K, V]`。我们已经移除了“该怎么做”的指导提示。你需要依靠自身经验，防范“缓存击穿”、“goroutine 泄露”、“大锁阻塞”等致命问题。
 
 【核心验收要求】：
-1. 必须支持泛型 `K comparable, V any`，不得退化为写死 string/int 版本。
-2. `GetOrLoad` 必须保证 same-key singleflight，并且 slow loader 不可在持锁区执行。
-3. 必须实现 TTL、驱逐、并发安全统计（Hits/Misses/LoadSuccess/LoadFailures/Evictions）。
-4. 必须在关键修复/设计处加注释：`// BUGFIX: [根因与修复逻辑]`（至少两处）。
+1. 泛型基础：必须支持泛型 `K comparable, V any`。
+2. **惊群防御**：解决同 key 高并发下的重复计算问题，严禁让底层服务遭受重复打击。
+3. **隔离性保护**：不同 key 的加载不能互相影响；极端慢的 loader 不得长时间独占读写锁导致全盘阻塞。
+4. **防御性编程**：妥善处理 context 取消、loader 挂起导致的超时问题，不要把系统拉爆。
+5. 必须在关键防御性设计处加注释：`// BUGFIX: [根因与修复逻辑]`（至少两处）。
 
 【输出要求】：
 仅输出两个代码块，禁止解释文字：
 1) 第一段：`package result` 的组件实现代码（供 m3_result.go 落盘）
-2) 第二段：`package result` 的单测代码（table-driven + 至少一个 benchmark）
+2) 第二段：`package result` 的单测代码（必须包含对“惊群效应”和“慢loader阻塞”的极端并发测试用例）

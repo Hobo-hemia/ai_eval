@@ -1,5 +1,5 @@
-Role: 资深 Go 后端交易链路工程师
-Task: 基于协议层计划实现高一致性订单创建链路
+Role: 顶级 Go 后端交易链路架构师
+Task: 在极度恶劣的分布式网络环境下实现健壮的 CreateOrder 链路
 
 请严格阅读并遵循：
 - @input/api.proto
@@ -7,16 +7,15 @@ Task: 基于协议层计划实现高一致性订单创建链路
 - @input/interfaces.go
 - @.cursorrules
 
-你需要实现 `CreateOrderService`，完成跨服务调用 + MySQL 事务 + Kafka + Redis 幂等控制，重点是“任意异常状态下的一致性”。
+你需要实现 `CreateOrderService`。我们不再给你保姆级的步骤提示，请运用你的系统设计经验，自主解决重试风暴、接口非幂等、以及系统崩溃边缘的数据一致性问题。
 
 【核心验收要求】：
-1. 协议一致：请求/响应字段语义与 `api.proto` 对齐。
-2. 事务正确：订单与 outbox 同事务写入；错误/异常必须 rollback；成功 commit。
-3. 外部调用顺序：禁止把高耗时跨服务调用放在事务期内。
-4. Kafka 失败处理：必须保留可重试状态（outbox retry + Redis 标记）且返回 error。
-5. 幂等正确：同 request_id 不得重复创建订单。
+1. 协议实现：精准对齐 `api.proto` 语义。
+2. 并发防刷：有效拦截并发重放，坚决保护**非幂等下游**。
+3. 性能保护：绝不可将网络 I/O 等慢操作包裹在数据库事务中引发 DBA 报警。
+4. 极致一致性：当 Kafka 发生故障时，订单与消息事件的最终一致性必须得到保障。任何错误不能被默默吞掉。
 
 【输出要求】：
 只输出两个代码块，禁止解释文字：
 1) 第一段：业务实现代码（`package result`）
-2) 第二段：对应测试代码（`package result`，table-driven）
+2) 第二段：对应测试代码（`package result`，需使用 table-driven 测试极端异常场景）
