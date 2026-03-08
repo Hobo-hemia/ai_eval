@@ -14,13 +14,6 @@ import (
 	"ai_eval/internal/module"
 )
 
-var moduleOrder = []string{
-	"m1_arch",
-	"m2_biz",
-	"m3_component",
-	"m4_bugfix",
-}
-
 type modelScores struct {
 	modelDir string
 	name     string
@@ -44,7 +37,8 @@ func runResult(args []string) int {
 		return 1
 	}
 
-	content := renderResultMarkdown(models)
+	modules := detectedModuleOrder(models)
+	content := renderResultMarkdown(models, modules)
 	if err := os.WriteFile(*outPath, []byte(content), 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "write result markdown failed: %v\n", err)
 		return 1
@@ -139,9 +133,9 @@ func normalizeLegacyScoreShape(s module.Score, raw []byte, moduleID string) modu
 		scoreVal := int(anyNumber(rawScore))
 		dKey := fmt.Sprintf("D%d", i)
 		detail := module.ScoreDetail{
-			Dimension:   legacyDimensionByModule(moduleID, dKey),
+			Dimension:   anyString(obj[fmt.Sprintf("D%d_dimension", i)]),
 			Score:       scoreVal,
-			MaxScore:    legacyMaxByModule(moduleID, dKey),
+			MaxScore:    int(anyNumber(obj[fmt.Sprintf("D%d_max_score", i)])),
 			LogEvidence: anyString(obj[reasonKey]),
 		}
 		if detail.Dimension == "" {
@@ -153,63 +147,6 @@ func normalizeLegacyScoreShape(s module.Score, raw []byte, moduleID string) modu
 		s.Breakdown = breakdown
 	}
 	return s
-}
-
-func legacyMaxByModule(moduleID, dKey string) int {
-	table := map[string]map[string]int{
-		"m1_arch": {
-			"D1": 15, "D2": 35, "D3": 25, "D4": 25,
-		},
-		"m2_biz": {
-			"D1": 15, "D2": 30, "D3": 25, "D4": 15, "D5": 15,
-		},
-		"m3_component": {
-			"D1": 15, "D2": 30, "D3": 25, "D4": 15, "D5": 15,
-		},
-		"m4_bugfix": {
-			"D1": 10, "D2": 40, "D3": 25, "D4": 15, "D5": 10,
-		},
-	}
-	if t, ok := table[moduleID]; ok {
-		return t[dKey]
-	}
-	return 0
-}
-
-func legacyDimensionByModule(moduleID, dKey string) string {
-	table := map[string]map[string]string{
-		"m1_arch": {
-			"D1": "协议基础合法性与编译",
-			"D2": "业务功能结构抽象",
-			"D3": "接口聚合与收敛设计",
-			"D4": "历史包袱与防御性设计",
-		},
-		"m2_biz": {
-			"D1": "编译通过率",
-			"D2": "业务功能与并发防刷防御",
-			"D3": "事务保护与状态一致性",
-			"D4": "分布式降级与重试容错",
-			"D5": "可验证性与工程质量",
-		},
-		"m3_component": {
-			"D1": "编译通过率",
-			"D2": "惊群防御与 Singleflight 级抽象",
-			"D3": "细粒度锁与慢阻塞隔离",
-			"D4": "防御性编程与资源控制",
-			"D5": "可验证性与性能意识",
-		},
-		"m4_bugfix": {
-			"D1": "编译通过率",
-			"D2": "隐患挖掘与修复质量",
-			"D3": "规约验证结果",
-			"D4": "历史包袱约束遵守",
-			"D5": "代码性能与工程整洁度",
-		},
-	}
-	if t, ok := table[moduleID]; ok {
-		return t[dKey]
-	}
-	return dKey
 }
 
 func anyNumber(v any) float64 {
@@ -235,45 +172,71 @@ func anyString(v any) string {
 	return strings.TrimSpace(s)
 }
 
-func renderResultMarkdown(models []modelScores) string {
+func renderResultMarkdown(models []modelScores, modules []string) string {
 	var b strings.Builder
 	b.WriteString("# RESULT\n\n")
 	b.WriteString("## 1. 正确性\n")
 	b.WriteString("- 评测标准：每个模块评判的总分，缺失或者编译失败计 0 分\n")
-	b.WriteString("- 权重：25%；25%；25%；25%；\n\n")
+	if len(modules) > 0 {
+		eq := 100.0 / float64(len(modules))
+		parts := make([]string, 0, len(modules))
+		for range modules {
+			parts = append(parts, fmt.Sprintf("%.1f%%", eq))
+		}
+		b.WriteString("- 权重：" + strings.Join(parts, "；") + "；\n\n")
+	} else {
+		b.WriteString("- 权重：-\n\n")
+	}
 
-	renderCorrectnessSubTable(&b, models, "M1", "m1_arch")
-	renderCorrectnessSubTable(&b, models, "M2", "m2_biz")
-	renderCorrectnessSubTable(&b, models, "M3", "m3_component")
-	renderCorrectnessSubTable(&b, models, "M4", "m4_bugfix")
+	for _, moduleID := range modules {
+		renderCorrectnessSubTable(&b, models, moduleTitle(moduleID), moduleID)
+	}
 
 	b.WriteString("### 总分汇总\n\n")
-	b.WriteString("| 模型 | M1总分 | M2总分 | M3总分 | M4总分 | 加权总分 |\n")
-	b.WriteString("| --- | --- | --- | --- | --- | --- |\n")
+	sumHeader := []string{"模型"}
+	for _, moduleID := range modules {
+		sumHeader = append(sumHeader, moduleTitle(moduleID)+"总分")
+	}
+	sumHeader = append(sumHeader, "加权总分")
+	b.WriteString("| " + strings.Join(sumHeader, " | ") + " |\n")
+	sep := make([]string, 0, len(sumHeader))
+	for range sumHeader {
+		sep = append(sep, "---")
+	}
+	b.WriteString("| " + strings.Join(sep, " | ") + " |\n")
 	for _, m := range models {
-		m1 := moduleTotalByRule(scoreByModule(m, "m1_arch"))
-		m2 := moduleTotalByRule(scoreByModule(m, "m2_biz"))
-		m3 := moduleTotalByRule(scoreByModule(m, "m3_component"))
-		m4 := moduleTotalByRule(scoreByModule(m, "m4_bugfix"))
-		b.WriteString(fmt.Sprintf(
-			"| %s | %d | %d | %d | %d | %.1f |\n",
-			escapePipe(m.name),
-			m1, m2, m3, m4,
-			weightedTotal(m),
-		))
+		row := []string{escapePipe(m.name)}
+		for _, moduleID := range modules {
+			row = append(row, fmt.Sprintf("%d", moduleTotalByRule(scoreByModule(m, moduleID))))
+		}
+		row = append(row, fmt.Sprintf("%.1f", weightedTotal(m, modules)))
+		b.WriteString("| " + strings.Join(row, " | ") + " |\n")
 	}
 	if len(models) == 0 {
-		b.WriteString("| - | 0 | 0 | 0 | 0 | 0.0 |\n")
+		row := []string{"-"}
+		for range modules {
+			row = append(row, "0")
+		}
+		row = append(row, "0.0")
+		b.WriteString("| " + strings.Join(row, " | ") + " |\n")
 	}
 
 	b.WriteString("\n## 2. 时间\n")
 	b.WriteString("- 记录模型在每个模块生成产物的时间开销\n")
 	b.WriteString("- 单位：秒\n\n")
-	b.WriteString("| 模型 | M1 | M2 | M3 | M4 |\n")
-	b.WriteString("| --- | --- | --- | --- | --- |\n")
+	timeHeader := []string{"模型"}
+	for _, moduleID := range modules {
+		timeHeader = append(timeHeader, moduleTitle(moduleID))
+	}
+	b.WriteString("| " + strings.Join(timeHeader, " | ") + " |\n")
+	timeSep := make([]string, 0, len(timeHeader))
+	for range timeHeader {
+		timeSep = append(timeSep, "---")
+	}
+	b.WriteString("| " + strings.Join(timeSep, " | ") + " |\n")
 	for _, m := range models {
 		row := []string{escapePipe(m.name)}
-		for _, moduleID := range moduleOrder {
+		for _, moduleID := range modules {
 			s, ok := m.byModule[moduleID]
 			if !ok {
 				row = append(row, "-")
@@ -284,7 +247,11 @@ func renderResultMarkdown(models []modelScores) string {
 		b.WriteString("| " + strings.Join(row, " | ") + " |\n")
 	}
 	if len(models) == 0 {
-		b.WriteString("| - | - | - | - | - |\n")
+		row := []string{"-"}
+		for range modules {
+			row = append(row, "-")
+		}
+		b.WriteString("| " + strings.Join(row, " | ") + " |\n")
 	}
 
 	b.WriteString("\n## 3. 成本\n")
@@ -349,10 +316,14 @@ func renderCorrectnessSubTable(b *strings.Builder, models []modelScores, moduleL
 	b.WriteString("\n")
 }
 
-func weightedTotal(m modelScores) float64 {
+func weightedTotal(m modelScores, modules []string) float64 {
+	if len(modules) == 0 {
+		return 0
+	}
+	w := 1.0 / float64(len(modules))
 	var total float64
-	for _, moduleID := range moduleOrder {
-		total += float64(moduleTotalByRule(scoreByModule(m, moduleID))) * 0.25
+	for _, moduleID := range modules {
+		total += float64(moduleTotalByRule(scoreByModule(m, moduleID))) * w
 	}
 	return total
 }
@@ -410,8 +381,9 @@ func ruleColumnsAndMeta(models []modelScores, moduleID string) ([]string, map[st
 	out := make([]string, 0)
 	for _, m := range models {
 		s := scoreByModule(m, moduleID)
+		localHasD := hasDInBreakdown(s)
 		for k, d := range s.Breakdown {
-			label := normalizeRuleLabel(k, d.Dimension, explicitD)
+			label := normalizeRuleLabel(k, d.Dimension, explicitD && localHasD)
 			if label == "" {
 				continue
 			}
@@ -444,8 +416,9 @@ func ruleColumnsAndMeta(models []modelScores, moduleID string) ([]string, map[st
 }
 
 func scoreByColumn(s module.Score, col string, explicitD bool) int {
+	localHasD := hasDInBreakdown(s)
 	for k, d := range s.Breakdown {
-		if normalizeRuleLabel(k, d.Dimension, explicitD) == col {
+		if normalizeRuleLabel(k, d.Dimension, explicitD && localHasD) == col {
 			return d.Score
 		}
 	}
@@ -501,6 +474,61 @@ func hasExplicitDRules(models []modelScores, moduleID string) bool {
 		}
 	}
 	return false
+}
+
+func hasDInBreakdown(s module.Score) bool {
+	for k := range s.Breakdown {
+		if _, ok := normalizeDKey(k); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func detectedModuleOrder(models []modelScores) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	for _, m := range models {
+		for moduleID := range m.byModule {
+			if _, ok := seen[moduleID]; ok {
+				continue
+			}
+			seen[moduleID] = struct{}{}
+			out = append(out, moduleID)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return moduleRank(out[i]) < moduleRank(out[j])
+	})
+	return out
+}
+
+func moduleRank(moduleID string) int {
+	l := strings.ToLower(moduleID)
+	if strings.HasPrefix(l, "m") {
+		num := ""
+		for _, ch := range strings.TrimPrefix(l, "m") {
+			if ch >= '0' && ch <= '9' {
+				num += string(ch)
+				continue
+			}
+			break
+		}
+		if num != "" {
+			if n, err := strconv.Atoi(num); err == nil {
+				return n
+			}
+		}
+	}
+	return 999
+}
+
+func moduleTitle(moduleID string) string {
+	parts := strings.SplitN(strings.ToLower(moduleID), "_", 2)
+	if len(parts) > 0 && strings.HasPrefix(parts[0], "m") {
+		return strings.ToUpper(parts[0])
+	}
+	return strings.ToUpper(moduleID)
 }
 
 func escapePipe(v string) string {
