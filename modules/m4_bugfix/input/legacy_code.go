@@ -54,7 +54,9 @@ func (s *SettlementService) AddTransactions(ctx context.Context, day string, amo
 
 	if total >= riskThreshold && s.notifier != nil {
 		// BUG: notifier called under lock can deadlock on re-entrant calls.
-		// BUG: not idempotent; repeated calls above threshold will over-notify.
+		// BUG: not idempotent on success; repeated calls above threshold will over-notify.
+		// BUG: marks alerted regardless notify error, causing failed alert to never retry.
+		// BUG: ignores ctx cancellation/error from notifier.
 		time.Sleep(10 * time.Millisecond) // emulate slow network I/O
 		_ = s.notifier.NotifyHighRisk(ctx, day, total)
 		s.alerted[day] = true

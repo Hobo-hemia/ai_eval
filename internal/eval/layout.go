@@ -9,28 +9,12 @@ var supportedModules = []string{
 	"m4_bugfix",
 }
 
-var supportedModels = []string{
-	"gemini-3.1",
-	"gpt-5.3",
-	"claude-opus-4.6",
-	"qwen-3.5",
-	"kimi-2.5",
-}
-
 func IsSupportedModule(module string) bool {
 	return slices.Contains(supportedModules, module)
 }
 
-func IsSupportedModel(model string) bool {
-	return slices.Contains(supportedModels, model)
-}
-
 func SupportedModules() []string {
 	return append([]string(nil), supportedModules...)
-}
-
-func SupportedModels() []string {
-	return append([]string(nil), supportedModels...)
 }
 
 func DefaultDirectories() []string {

@@ -59,7 +59,7 @@ func RunAutoEvaluation(ctx context.Context, cfg AutoRunConfig) (*AutoRunResult, 
 
 	judgeModel := strings.TrimSpace(cfg.JudgeModel)
 	if judgeModel == "" {
-		judgeModel = "opus-4.6"
+		judgeModel = "gemini-3-flash"
 	}
 
 	modelDir := ModelDirName(model)
@@ -304,10 +304,10 @@ func m4Phase3Prompt(modelDir, judgeModel string, runtime RuntimeMetrics) string 
 - @eval_records/%[1]s/m4_bugfix/m4_test.log
 
 运行时长指标（必须在输出 JSON 中填写 runtime_metrics）：
-- phase1_seconds = %[3]0.1f
-- phase2_seconds = %[4]0.1f
-- phase3_seconds = %[5]0.1f
-- total_seconds = %[6]0.1f
+- phase1_seconds = %[3].1f
+- phase2_seconds = %[4].1f
+- phase3_seconds = %[5].1f
+- total_seconds = %[6].1f
 
 输出要求（强制）：
 1) 只输出 JSON，禁止 markdown 和额外说明

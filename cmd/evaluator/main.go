@@ -13,7 +13,7 @@ import (
 func main() {
 	var (
 		module = flag.String("module", "", "module id: m1_arch|m2_biz|m3_component|m4_bugfix")
-		model  = flag.String("model", "", "model id: gemini-3.1|gpt-5.3|claude-opus-4.6|qwen-3.5|kimi-2.5")
+		model  = flag.String("model", "", "model id (any Cursor available model)")
 		phase  = flag.String("phase", "prepare", "phase: prepare|record")
 	)
 	flag.Parse()

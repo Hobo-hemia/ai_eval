@@ -1,6 +1,6 @@
 # TODO LIST（你还需要完成的工作）
 
-> 当前以 `ai_eval_init` + `ai_eval` 为主流程，以下仅保留尚未完成事项。
+> 当前以 `ai_eval init` + `ai_eval run` 为主流程，以下仅保留尚未完成事项。
 
 ## Phase 1：题目物料补齐
 

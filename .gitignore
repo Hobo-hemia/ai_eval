@@ -1,0 +1,12 @@
+/.tmp/
+
+# Keep eval_records in repo but ignore run artifacts.
+/eval_records/*
+!/eval_records/README.md
+
+# Generated outputs during local/debug runs.
+/modules/m4_bugfix/m4_result.go
+/modules/m4_bugfix/m4_result_test.go
+
+# Binary documents are not tracked by default.
+*.pdf

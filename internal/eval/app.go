@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -40,14 +41,15 @@ func (a *Application) Prepare(_ context.Context) error {
 }
 
 func (a *Application) InitRecord(_ context.Context, model, module string) error {
-	if !IsSupportedModel(model) {
-		return fmt.Errorf("unsupported model: %s", model)
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return errors.New("model is required")
 	}
 	if !IsSupportedModule(module) {
 		return fmt.Errorf("unsupported module: %s", module)
 	}
 
-	recordDir := filepath.Join(a.cfg.WorkspaceRoot, "eval_records", model, module)
+	recordDir := filepath.Join(a.cfg.WorkspaceRoot, "eval_records", ModelDirName(model), module)
 	if err := os.MkdirAll(recordDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir record dir: %w", err)
 	}

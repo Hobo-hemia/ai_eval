@@ -4,6 +4,8 @@
 
 - 修复并发与重入死锁风险
 - 阈值告警按天 exactly-once
+- 告警失败可重试，且失败调用不提交账务累计
+- `context.Canceled` 失败后可恢复重试
 - 累加溢出防护
 - 保持既有对外签名
 - 使用 `gomock` + `testify/assert` 通过关键边界测试
