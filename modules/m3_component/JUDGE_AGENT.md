@@ -6,10 +6,11 @@
 
 ## Critical Rules
 
-1. 若没有主动实现针对同一个 key 的防并发加载（如 `singleflight`），导致 `LoaderFunc` 在并发下被重复触发，`D3` 直接记 0 分。
-2. 若在调用 `LoaderFunc` 时持有分片级别的互斥锁/读写锁，导致其他 key 的并发操作也被挂起，`D4` 记 0 分。
+1. 若没有主动实现针对同一个 key 的防并发加载（如 `singleflight`），导致 `LoaderFunc` 在并发下被重复触发，`D2` 直接记 0 分。
+2. 若在调用 `LoaderFunc` 时持有分片级别的互斥锁/读写锁，导致其他 key 的并发操作也被挂起，`D3` 直接记 0 分。
 3. 若 `m3_test.log` 出现 `DATA RACE`，总分封顶 40 分。
 4. 轻微工程错误（例如 unused import）只应影响 D1，不得机械外溢到全部维度。
+5. 【编译短路原则】：若 `D1` 编译失败记 0 分，则所有依赖运行时或测试日志验证的维度（`D5`）自动记 0 分，且总分不得超过 40 分。
 
 ## Scoring Rubric
 
@@ -41,3 +42,19 @@
 - 必须且只能输出合法 JSON。
 - 禁止输出 markdown 代码块或解释文本。
 - JSON 中必须包含严格的逻辑判断证据。
+- 请严格按照以下结构输出：
+  ```json
+  {
+    "D1_score": 15,
+    "D1_reason": "...",
+    "D2_score": 30,
+    "D2_reason": "...",
+    "D3_score": 25,
+    "D3_reason": "...",
+    "D4_score": 15,
+    "D4_reason": "...",
+    "D5_score": 15,
+    "D5_reason": "...",
+    "total_score": 100
+  }
+  ```
