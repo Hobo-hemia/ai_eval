@@ -21,7 +21,7 @@
 在仓库根目录执行：
 
 ```bash
-bash modules/m3_component/tests/run_full_chain.sh gpt-5.3-codex
+bash modules/m3_component/tests/run_full_chain.sh <model_dir>
 ```
 
 会产出：

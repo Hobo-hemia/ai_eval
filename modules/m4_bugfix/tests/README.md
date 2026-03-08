@@ -20,13 +20,13 @@
 在仓库根目录执行：
 
 ```bash
-bash modules/m4_bugfix/tests/run_full_chain.sh gpt-5.3-codex
+bash modules/m4_bugfix/tests/run_full_chain.sh <model_dir>
 ```
 
 执行后会更新：
 
-- `eval_records/gpt-5.3-codex/m4_bugfix/m4_build.log`
-- `eval_records/gpt-5.3-codex/m4_bugfix/m4_test.log`
+- `eval_records/<model_dir>/m4_bugfix/m4_build.log`
+- `eval_records/<model_dir>/m4_bugfix/m4_test.log`
 
 ## 约定
 

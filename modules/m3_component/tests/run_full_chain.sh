@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL_ID="${1:-gpt-5.3-codex}"
+MODEL_ID="${1:-}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 MODULE_ID="m3_component"
 RECORD_DIR="$ROOT_DIR/eval_records/$MODEL_ID/$MODULE_ID"
@@ -9,6 +9,11 @@ RESULT_FILE="$RECORD_DIR/m3_result.go"
 BUILD_LOG="$RECORD_DIR/m3_build.log"
 TEST_LOG="$RECORD_DIR/m3_test.log"
 HARNESS_DIR="$ROOT_DIR/modules/m3_component/tests/harness"
+
+if [[ -z "$MODEL_ID" ]]; then
+  echo "usage: bash modules/m3_component/tests/run_full_chain.sh <model_dir>" >&2
+  exit 2
+fi
 
 if [[ ! -f "$RESULT_FILE" ]]; then
   echo "missing result file: $RESULT_FILE" >&2

@@ -84,17 +84,21 @@ func TestLogFileByModule(module string) string {
 
 func NormalizeAutoModule(raw string) (string, error) {
 	switch normalizeModule(raw) {
+	case "m2":
+		return "m2_biz", nil
 	case "m3":
 		return "m3_component", nil
 	case "m4":
 		return "m4_bugfix", nil
 	default:
-		return "", fmt.Errorf("unsupported module: %s (expected: m3/m3_component or m4/m4_bugfix)", raw)
+		return "", fmt.Errorf("unsupported module: %s (expected: m2/m2_biz or m3/m3_component or m4/m4_bugfix)", raw)
 	}
 }
 
 func normalizeModule(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "m2", "m2_biz":
+		return "m2"
 	case "m3", "m3_component":
 		return "m3"
 	case "m4", "m4_bugfix":

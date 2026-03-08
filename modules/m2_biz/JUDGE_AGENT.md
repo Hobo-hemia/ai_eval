@@ -2,12 +2,13 @@
 
 ## Objective
 
-严格评估生成的复杂业务逻辑、PolarDB 事务处理及 Kafka 容错调度（满分 100 分）。
+严格评估“协议驱动 + 多依赖容错 + 强一致性”业务实现（满分 100 分）。
 
-## Critical Rule: 致命安全红线 (Fatal Security Lines)
+## Critical Rules
 
-- 如果代码中开启了 DB 事务（`BeginTx` 或类似操作），但遗漏了 `defer tx.Rollback()`，D3 直接记 0 分。
-- 如果代码中吞噬了核心 Kafka 投递 error（例如 `_ = err`），D4 直接记 0 分。
+1. 如果 `m2_test.log` 出现 `FAIL` / `panic` / `DATA RACE`，D2 至少降到 10 分以下。
+2. 如果事务开启后没有可靠 rollback 保护，D3 记 0。
+3. 如果 Kafka 失败路径没有可重试状态（outbox retry 或等效机制），D4 记 0。
 
 ## Scoring Rubric
 
@@ -15,19 +16,25 @@
 - 20: `m2_build.log` 成功。
 - 0: 编译失败（后续得分总和不得超过 10 分）。
 
-### D2: 业务功能与测试漏斗（Max: 40）
-- 40: `m2_test.log` 核心正反用例全部 PASS。
-- 20: 测试通过但存在硬编码，仅针对特定测试数据生效。
-- 0: 测试 FAIL，业务流转断裂。
+### D2: 业务功能与测试漏斗（Max: 45）
+- 45: `m2_test.log` 核心正反用例全部 PASS（含依赖失败场景）。
+- 25-35: 主流程可用，但失败场景覆盖不足或行为不稳定。
+- 0-20: 测试 FAIL 或关键路径断裂。
 
 ### D3: 事务与状态一致性（Max: 20）
-- 20: 正确 `defer tx.Rollback()` + 显式 `tx.Commit()`；无耗时外部 RPC 占用事务窗口。
-- 10: 实现事务，但把高耗时网络 IO 放在事务期内。
-- 0: 未开启事务或缺少 Rollback。
+- 20: 订单与 outbox 同事务写入；rollback/commit 语义正确；不在事务期做耗时跨服务调用。
+- 10: 有事务但边界不清晰，或存在潜在一致性风险。
+- 0: 无事务保护或事务策略错误。
 
-### D4: 链路追踪与容错降级（Max: 20）
-- 20: DB/Kafka 外部调用都透传 `ctx context.Context`，失败有重试、Fallback 或明确错误返回。
-- 0: 重新创建 `context.Background()` 或忽视 Kafka 报错。
+### D4: 容错补偿与上下文透传（Max: 15）
+- 15: 所有依赖调用透传 `ctx`；Kafka 失败有 retry/fallback 状态并返回可观测错误。
+- 8: 有容错但补偿不完整或信息不足。
+- 0: 忽视关键错误或无容错降级。
+
+### D5: 协议映射与抽象封装（Max: 20）
+- 20: 与 `api.proto` 语义一致；接口解耦好；无魔法硬编码。
+- 10: 语义基本匹配但抽象一般或有硬编码。
+- 0: 与协议定义偏差明显。
 
 ## Output Format Constraints
 

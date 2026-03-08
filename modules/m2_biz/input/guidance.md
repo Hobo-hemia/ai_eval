@@ -1,12 +1,22 @@
-Role: 资深 Go 后端架构师
-Task: 复杂业务流转与中间件调度实现
+Role: 资深 Go 后端交易链路工程师
+Task: 基于协议层计划实现高一致性订单创建链路
 
-请仔细阅读需求文档 @biz_spec.md 以及依赖接口定义 @interfaces.go，严格遵循当前工作区 .cursorrules，实现该模块的核心业务逻辑。
+请严格阅读并遵循：
+- @input/api.proto
+- @input/biz_spec.md
+- @input/interfaces.go
+- @.cursorrules
+
+你需要实现 `CreateOrderService`，完成跨服务调用 + MySQL 事务 + Kafka + Redis 幂等控制，重点是“任意异常状态下的一致性”。
 
 【核心验收要求】：
-1. 事务边界：必须包含严谨的 PolarDB/MySQL 事务控制，确保在发生 Error 或 Panic 时能够正确 Rollback，成功则 Commit。
-2. 容错与重试：实现对 Kafka 或外部 RPC 的调用，并包含必要的错误降级（Fallback）或重试机制。
-3. 上下文控制：所有外部调用必须正确透传 context.Context，并处理好超时（Timeout）或取消（Cancellation）边界。
+1. 协议一致：请求/响应字段语义与 `api.proto` 对齐。
+2. 事务正确：订单与 outbox 同事务写入；错误/异常必须 rollback；成功 commit。
+3. 外部调用顺序：禁止把高耗时跨服务调用放在事务期内。
+4. Kafka 失败处理：必须保留可重试状态（outbox retry + Redis 标记）且返回 error。
+5. 幂等正确：同 request_id 不得重复创建订单。
 
 【输出要求】：
-请只输出包含核心业务逻辑的完整 Go 代码（包含必要的 Struct 和 Func）。无需解释设计思路，确保代码可直接参与 go build。
+只输出两个代码块，禁止解释文字：
+1) 第一段：业务实现代码（`package result`）
+2) 第二段：对应测试代码（`package result`，table-driven）

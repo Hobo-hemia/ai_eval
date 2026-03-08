@@ -9,9 +9,9 @@
 - [ ] 在 `modules/m1_arch/tests/` 增加黑盒测试（编译、校验调用、分层与错误包装规范）。
 
 ### M2 业务实现
-- [ ] 补全 `modules/m2_biz/input/biz_spec.md` 的真实业务流程与边界条件。
-- [ ] 补全 `modules/m2_biz/input/interfaces.go` 的真实依赖接口（DB、Kafka、RPC）。
-- [ ] 在 `modules/m2_biz/tests/` 增加事务、容错、Context 透传测试。
+- [x] 补全 `modules/m2_biz/input/biz_spec.md` 的真实业务流程与边界条件。
+- [x] 补全 `modules/m2_biz/input/interfaces.go` 的真实依赖接口（DB、Kafka、RPC、Redis）。
+- [x] 在 `modules/m2_biz/tests/` 增加事务、容错、Context 透传与一致性测试。
 
 ### M3 组件设计
 - [x] 补全 `modules/m3_component/input/rate_limit_spec.md`（抽象契约、并发语义、可量化验收目标）。

@@ -30,6 +30,7 @@ ai_eval/
 │   ├── module/                 # 模块元数据与通用模型（目录命名、评分结构、文件命名）
 │   └── workflow/               # 自动化评测工作流拆分（phase1/phase2/judge/prompt/isolation）
 ├── modules/
+│   ├── m2_biz/                 # M2 题目、输入材料、harness、裁判规则
 │   ├── m3_component/           # M3 题目、输入材料、harness、裁判规则
 │   └── m4_bugfix/              # M4 题目、输入材料、harness、裁判规则
 ├── templates/                  # 通用裁判提示词模板
@@ -49,7 +50,8 @@ cursor-agent login
 
 go install .
 
-ai_eval init --models "gpt-5.2-codex,sonnet-4.5,gpt-5.3-codex-low-fast" --modules "m3,m4"
+ai_eval init --models "gpt-5.2-codex,sonnet-4.5,gpt-5.3-codex-low-fast" --modules "m2,m3,m4"
+ai_eval run --module m2 --model "gpt-5.2-codex" --judge-model "gemini-3-flash"
 ai_eval run --module m3 --model "gpt-5.2-codex" --judge-model "gemini-3-flash"
 ai_eval run --module m4 --model "gpt-5.3-codex-low-fast" --judge-model "gemini-3-flash"
 
@@ -57,13 +59,13 @@ ai_eval run --module m4 --model "gpt-5.3-codex-low-fast" --judge-model "gemini-3
 ai_eval clear
 ```
 
-## 当前行为（以 m3/m4 为例）
+## 当前行为（以 m2/m3/m4 为例）
 
-- 当前支持模块：`m3` / `m3_component`、`m4` / `m4_bugfix`
+- 当前支持模块：`m2` / `m2_biz`、`m3` / `m3_component`、`m4` / `m4_bugfix`
 - 自动产物：
-  - `eval_records/<model_dir>/<module>/m3_result.go|m4_result.go`
-  - `eval_records/<model_dir>/<module>/m3_build.log|m4_build.log`
-  - `eval_records/<model_dir>/<module>/m3_test.log|m4_test.log`
+  - `eval_records/<model_dir>/<module>/m2_result.go|m3_result.go|m4_result.go`
+  - `eval_records/<model_dir>/<module>/m2_build.log|m3_build.log|m4_build.log`
+  - `eval_records/<model_dir>/<module>/m2_test.log|m3_test.log|m4_test.log`
   - `eval_records/<model_dir>/<module>/score.json`
 - 自动清理中间产物，避免后续编译污染
 - `Phase1` 在隔离工作区执行，只暴露当前模块 `input/` 与 `.cursorrules`，不暴露 `tests/harness` 与裁判规则
@@ -76,6 +78,7 @@ ai_eval clear
   - `runtime_metrics.total_seconds`
 
 可选模型见 `docs/reference/模型清单.md`，模块细节见：
+- `docs/sop/M2_模块测试全链路样例.md`
 - `docs/sop/M3_模块测试全链路样例.md`
 - `docs/sop/M4_模块测试全链路样例.md`
 
