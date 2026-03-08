@@ -2,32 +2,48 @@
 
 ## Objective
 
-量化评估分布式滑动窗口限流器的实现质量，核心侧重并发安全、Redis Lua 原子性设计及防硬编码意识（满分 100 分）。
+量化评估“高抽象、高复用、高并发”缓存组件实现质量（满分 100 分），强调：
+- 抽象与封装是否足够工程化；
+- 并发正确性与锁粒度是否达标；
+- 性能表现是否可观测且有说服力。
 
-## Critical Rule: 并发铁律
+## Critical Rules
 
-- 检查 `@m3_test.log`，如果出现 `DATA RACE`，D2 必须为 0 分。
-- 如果复合限流计算未使用 Redis Lua 脚本，D3 必须为 0 分。
+1. 若 `m3_build.log` 编译失败，D1=0 且总分不得超过 25。
+2. 若 `m3_test.log` 出现 `FAIL` / `DATA RACE` / 明显死锁超时，D2=0 且总分不得超过 35。
+3. 若缺失 `// BUGFIX:` 关键注释，D3 至少扣 8 分。
 
 ## Scoring Rubric
 
-### D1: 编译通过率（Max: 20）
-- 20: `m3_build.log` 成功编译。
+### D1: 编译通过率（Max: 15）
+- 15: `m3_build.log` 编译成功；
 - 0: 编译失败。
 
-### D2: 并发压测验证（Max: 40）
-- 40: `m3_test.log` PASS，且无 `DATA RACE`。
-- 0: 测试 FAIL、死锁或 Data Race。
+### D2: 合同测试与并发正确性（Max: 40）
+- 40: contract tests 全部 PASS，且无 `DATA RACE`；
+- 25-35: 大部分通过，但关键并发场景有瑕疵；
+- 0-20: 存在 FAIL / race / 死锁问题。
 
-### D3: Redis 原子性设计（Max: 20）
-- 20: 核心计算封装在单个 Lua 脚本，并由 `redis.NewScript` 加载执行。
-- 0: 出现跨网络 Check-Then-Act（先 `ZCard` 再 `ZAdd` 等）。
+### D3: 抽象与封装质量（Max: 25）
+重点看 `m3_result.go`：
+- 是否真正使用泛型 `ShardCache[K,V]`；
+- 是否通过 `CacheConfig` 配置化，避免硬编码；
+- 是否内部状态非导出且 API 边界清晰；
+- 是否包含关键 `// BUGFIX:` 注释解释设计取舍。
 
-### D4: 配置抽象度与防腐（Max: 20）
-- 20: `Limit`、`Window` 通过 Config/Options 注入，对外 API 包含 Context。
-- 0: 出现明显 Magic Numbers。
+### D4: 并发设计与锁粒度（Max: 10）
+- 是否实现 same-key singleflight；
+- 是否避免在持锁区执行慢 loader；
+- 是否使用分片降低热点锁竞争。
+
+### D5: 运行时效率（Max: 10）
+参考 `m3_test.log` 的 benchmark 段：
+- 有 benchmark 结果且吞吐稳定：8-10；
+- 有结果但性能一般或不稳定：4-7；
+- 无有效 benchmark 数据：0-3。
 
 ## Output Format Constraints
 
-- 必须且只能输出合法的 JSON 纯文本。
-- 禁止输出 Markdown 代码块或解释性文字。
+- 必须且只能输出合法 JSON；
+- 禁止输出 markdown 代码块或解释文本；
+- JSON 中必须给出每个维度的证据（log/code evidence）并与分值一致。

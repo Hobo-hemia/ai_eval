@@ -1,4 +1,4 @@
-package eval
+package module
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"flag"
@@ -7,17 +7,21 @@ import (
 	"path/filepath"
 )
 
-func main() {
+func runClear(args []string) int {
+	fs := flag.NewFlagSet("clear", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
 	var (
-		evalRecordsDir = flag.String("dir", "eval_records", "eval records root directory")
-		keepReadme     = flag.Bool("keep-readme", true, "keep eval_records/README.md")
+		evalRecordsDir = fs.String("dir", "eval_records", "eval records root directory")
+		keepReadme     = fs.Bool("keep-readme", true, "keep eval_records/README.md")
 	)
-	flag.Parse()
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
 
 	entries, err := os.ReadDir(*evalRecordsDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read eval_records failed: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	removed := 0
@@ -29,12 +33,13 @@ func main() {
 		target := filepath.Join(*evalRecordsDir, name)
 		if err := os.RemoveAll(target); err != nil {
 			fmt.Fprintf(os.Stderr, "remove failed: %s: %v\n", target, err)
-			os.Exit(1)
+			return 1
 		}
 		removed++
 	}
 
-	fmt.Println("ai_eval_clear success")
+	fmt.Println("ai_eval clear success")
 	fmt.Printf("removed entries: %d\n", removed)
 	fmt.Printf("target dir: %s\n", *evalRecordsDir)
+	return 0
 }

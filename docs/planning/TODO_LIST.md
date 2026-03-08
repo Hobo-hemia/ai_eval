@@ -14,8 +14,8 @@
 - [ ] 在 `modules/m2_biz/tests/` 增加事务、容错、Context 透传测试。
 
 ### M3 组件设计
-- [ ] 补全 `modules/m3_component/input/rate_limit_spec.md`（吞吐目标、窗口定义、压测口径）。
-- [ ] 在 `modules/m3_component/tests/` 增加并发压测、`-race` 校验、Lua 原子性验证。
+- [x] 补全 `modules/m3_component/input/rate_limit_spec.md`（抽象契约、并发语义、可量化验收目标）。
+- [x] 在 `modules/m3_component/tests/` 增加并发 contract tests、`-race` 校验与 benchmark 口径。
 
 ### M4 缺陷修复
 - [x] 补全 `modules/m4_bugfix/input/bug_report.md` 与 `legacy_code.go` 的真实缺陷样本。

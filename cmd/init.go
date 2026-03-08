@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"flag"
@@ -7,41 +7,46 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ai_eval/internal/eval"
+	core "ai_eval/internal"
 )
 
-func main() {
+func runInit(args []string) int {
+	fs := flag.NewFlagSet("init", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
 	var (
-		modelsFlag  = flag.String("models", "", "comma-separated candidate models")
-		modulesFlag = flag.String("modules", "m4", "comma-separated modules, e.g. m4 or m1,m2,m3,m4")
+		modelsFlag  = fs.String("models", "", "comma-separated candidate models")
+		modulesFlag = fs.String("modules", "m4", "comma-separated modules, e.g. m4 or m1,m2,m3,m4")
 	)
-	flag.Parse()
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
 
 	models := splitCSV(*modelsFlag)
 	if len(models) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ai_eval_init --models \"model-a,model-b\" [--modules \"m4\"]")
-		os.Exit(2)
+		fmt.Fprintln(os.Stderr, "usage: ai_eval init --models \"model-a,model-b\" [--modules \"m4\"]")
+		return 2
 	}
 	modules, err := normalizeModules(splitCSV(*modulesFlag))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "invalid modules: %v\n", err)
-		os.Exit(2)
+		return 2
 	}
 
-	for _, model := range models {
-		modelDir := eval.ModelDirName(model)
-		for _, module := range modules {
-			recordDir := filepath.Join("eval_records", modelDir, module)
+	for _, modelName := range models {
+		modelDir := core.ModelDirName(modelName)
+		for _, moduleID := range modules {
+			recordDir := filepath.Join("eval_records", modelDir, moduleID)
 			if err := os.MkdirAll(recordDir, 0o755); err != nil {
 				fmt.Fprintf(os.Stderr, "mkdir failed: %s: %v\n", recordDir, err)
-				os.Exit(1)
+				return 1
 			}
 		}
 	}
 
-	fmt.Println("ai_eval_init success")
+	fmt.Println("ai_eval init success")
 	fmt.Printf("models: %s\n", strings.Join(models, ", "))
 	fmt.Printf("modules: %s\n", strings.Join(modules, ", "))
+	return 0
 }
 
 func splitCSV(raw string) []string {
@@ -63,8 +68,8 @@ func normalizeModules(modules []string) ([]string, error) {
 	}
 	out := make([]string, 0, len(modules))
 	seen := map[string]struct{}{}
-	for _, module := range modules {
-		mapped, err := normalizeModule(module)
+	for _, moduleID := range modules {
+		mapped, err := normalizeModule(moduleID)
 		if err != nil {
 			return nil, err
 		}
@@ -77,8 +82,8 @@ func normalizeModules(modules []string) ([]string, error) {
 	return out, nil
 }
 
-func normalizeModule(module string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(module)) {
+func normalizeModule(moduleID string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(moduleID)) {
 	case "m1", "m1_arch":
 		return "m1_arch", nil
 	case "m2", "m2_biz":
@@ -88,6 +93,6 @@ func normalizeModule(module string) (string, error) {
 	case "m4", "m4_bugfix":
 		return "m4_bugfix", nil
 	default:
-		return "", fmt.Errorf("unsupported module: %s", module)
+		return "", fmt.Errorf("unsupported module: %s", moduleID)
 	}
 }

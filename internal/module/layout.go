@@ -1,6 +1,10 @@
-package eval
+package module
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 var supportedModules = []string{
 	"m1_arch",
@@ -18,7 +22,7 @@ func SupportedModules() []string {
 }
 
 func DefaultDirectories() []string {
-	dirs := []string{
+	return []string{
 		"docs",
 		"templates",
 		"eval_records",
@@ -31,7 +35,6 @@ func DefaultDirectories() []string {
 		"modules/m4_bugfix/input",
 		"modules/m4_bugfix/tests",
 	}
-	return dirs
 }
 
 func ResultFileByModule(module string) string {
@@ -76,5 +79,27 @@ func TestLogFileByModule(module string) string {
 		return "m4_test.log"
 	default:
 		return "test.log"
+	}
+}
+
+func NormalizeAutoModule(raw string) (string, error) {
+	switch normalizeModule(raw) {
+	case "m3":
+		return "m3_component", nil
+	case "m4":
+		return "m4_bugfix", nil
+	default:
+		return "", fmt.Errorf("unsupported module: %s (expected: m3/m3_component or m4/m4_bugfix)", raw)
+	}
+}
+
+func normalizeModule(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "m3", "m3_component":
+		return "m3"
+	case "m4", "m4_bugfix":
+		return "m4"
+	default:
+		return ""
 	}
 }
