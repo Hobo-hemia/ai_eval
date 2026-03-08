@@ -20,7 +20,7 @@
 
 参考 `interfaces.go`，必须实现：
 
-- `func NewCreateOrderService(...) *CreateOrderService`
+- `func NewCreateOrderService(repo OrderRepository, txManager TxManager, inventory InventoryClient, pricing PricingClient, producer KafkaProducer, cache RedisCache) *CreateOrderService`
 - `func (s *CreateOrderService) HandleCreateOrder(ctx context.Context, req *CreateOrderRequest) (*CreateOrderResponse, error)`
 
 你可使用传入的 Redis 客户端（或其他机制）来防范并发安全陷阱。
