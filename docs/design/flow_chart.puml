@@ -1,0 +1,38 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam monochrome true
+
+start
+:ai_eval run;
+
+partition "Phase 1: 隔离生成 (Generation)" {
+  :创建临时隔离工作区 (.tmp/);
+  :注入模块限定材料 (input/ 与 .cursorrules);
+  :触发 被测大模型 (Candidate Model);
+  :模型输出目标代码 (mX_result.go);
+  :代码持久化至评测目录 (eval_records/);
+}
+
+partition "Phase 2: 真实执行 (Execution)" {
+  :装载测试床 (tests/harness);
+  :执行 go build;
+  :输出编译事实 (mX_build.log);
+  :执行 go test;
+  :输出运行事实 (mX_test.log);
+}
+
+partition "Phase 3: 客观裁判 (Evaluation)" {
+  :组装裁判提示词 (Prompt);
+  note right
+    包含：评分大纲 (JUDGE_AGENT.md)
+    + 目标代码 + 编译日志 + 测试日志
+  end note
+  :调用 裁判大模型 (Judge Model);
+  :强制依据"事实日志"得出各维度分数;
+  :序列化输出多维度报告 (score.json);
+}
+
+:run_all.sh 提取所有 score.json;
+:生成全局大盘报告 (RESULT.md);
+stop
+@enduml

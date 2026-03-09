@@ -1,0 +1,58 @@
+@startuml
+skinparam componentStyle uml2
+skinparam linetype ortho
+
+package "User Interface" {
+  component "ai_eval CLI" as CLI
+}
+note right of CLI : 包含 init, run, clear 命令
+
+package "Core Workflow (internal/workflow)" {
+  component "Phase 1: Generation Engine" as P1
+  component "Phase 2: Execution Engine" as P2
+  component "Phase 3: Judge Engine" as P3
+}
+
+package "FileSystem Components" {
+  folder "modules/ (题目定义库)" {
+    component "题目物料 (input/)" as Input
+    component "隐设测试床 (tests/)" as Tests
+    component "裁判规则 (JUDGE_AGENT.md)" as Rule
+  }
+  
+  folder ".tmp/ (隔离沙盒)" as Sandbox {
+    component "仅含 Input 的纯净空间" as SandboxSpace
+  }
+  
+  folder "eval_records/ (评测产物)" {
+    component "源码产物 (result.go)" as Src
+    component "执行日志 (build/test.log)" as Logs
+    component "得分报告 (score.json)" as Score
+  }
+}
+
+cloud "AI Services" {
+  component "Candidate Model\n(GPT/Claude/Cursor)" as Candidate
+  component "Judge Model\n(Opus/Gemini)" as Judge
+}
+
+CLI --> P1 : 路由调度
+CLI --> P2 : 路由调度
+CLI --> P3 : 路由调度
+
+P1 ..> Input : 读取
+P1 --> SandboxSpace : 初始化沙盒
+SandboxSpace <--> Candidate : 隔离上下文交互\n生成代码
+Candidate --> Src : 产出结果
+
+P2 ..> Src : 读取生成的源码
+P2 ..> Tests : 注入对应模块的测试桩
+P2 --> Logs : 执行系统命令\n产生真实运行日志
+
+P3 ..> Rule : 加载硬性判卷铁律
+P3 ..> Src : 提供静态代码参考
+P3 ..> Logs : 提供动态事实依据
+P3 <--> Judge : 依据综合上下文\n请求打分判定
+Judge --> Score : 结构化输出判定结果
+
+@enduml

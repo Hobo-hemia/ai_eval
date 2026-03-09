@@ -1,4 +1,5 @@
 /.tmp/
+/.idea
 
 # Keep eval_records in repo but ignore run artifacts.
 /eval_records/*

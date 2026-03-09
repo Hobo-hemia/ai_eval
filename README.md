@@ -6,6 +6,16 @@
 - `ai_eval run`：执行 `Init -> Phase1 -> Phase2 -> Phase3 -> Done` 全链路
 - `ai_eval clear`：清理评测产物
 
+## 评测全链路架构与流程
+
+详细的设计图如下：
+
+### 全链路执行流程图
+[![全链路执行流程图](./docs/design/flow_chart.png)](./docs/design/flow_chart.puml)
+
+### 评测系统模块架构图
+[![评测系统模块架构图](./docs/design/architecture.png)](./docs/design/architecture.puml)
+
 ## 目录
 
 - `main.go`: 程序入口
