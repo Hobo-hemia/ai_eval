@@ -15,3 +15,5 @@
 
 # Binary documents are not tracked by default.
 *.pdf
+
+/vendor
